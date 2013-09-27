@@ -8,5 +8,6 @@
 #include "Nivel.h"
 
 int main(void){
+	printf("Print algo /n");
 	return EXIT_SUCCESS;
 }
