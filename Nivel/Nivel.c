@@ -8,6 +8,8 @@
 #include "Nivel.h"
 
 int main(void){
+	ITEM_NIVEL* list;
+	list = NULL;
 	printf("Print algo /n");
 	return EXIT_SUCCESS;
 }

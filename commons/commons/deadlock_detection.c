@@ -281,10 +281,13 @@ t_list* deadlockDetection(ITEM_NIVEL* listaR, ITEM_NIVEL* listaP){
 		tempP= tempP->next;
 	}
 
-	list_destroy_and_destroy_elements(request, (void *) free);
+
+//	list_destroy_and_destroy_elements(request, (void *) free);
+	list_destroy(request);
 	list_destroy_and_destroy_elements(avaible, (void *) free);
 //	TODO: list_destroy_and_destroy_elements(work, (void *) free);
-	list_destroy_and_destroy_elements(allocation, (void *) free);
+//	list_destroy_and_destroy_elements(allocation, (void *) free);
+	list_destroy(allocation);
 	list_destroy_and_destroy_elements(matriz, (void *) free);
 	return finish;
 }
