@@ -15,3 +15,12 @@
 *.exe
 *.out
 *.app
+/commons/Debug/commons/deadlock_detection.d
+/commons/Debug/commons/nivel-gui.d
+/commons/Debug/commons/sockets.d
+/commons/Debug/commons/tad_items.d
+/Koopa/Debug/Koopa
+/Nivel/Debug/Nivel
+/Nivel/Debug/Nivel.d
+/Personaje/Debug/Personaje
+/Plataforma/Debug/Plataforma
