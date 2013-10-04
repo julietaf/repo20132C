@@ -7,7 +7,15 @@
 
 
 #include "Plataforma.h"
+#include "Orquestador.h"
+#include <stdlib.h>
+#include <pthread.h>
 
 int main(void){
+	pthread_t hOrquestador;
+
+	pthread_create(&hOrquestador, NULL, (void *)orquestador, NULL);
+	pthread_join(hOrquestador, (void **)NULL);
+
 	return EXIT_SUCCESS;
 }
