@@ -178,7 +178,7 @@ void ipInfo_destroy(ip_info_t *ipInfo) {
 	free(ipInfo);
 }
 
-char *coordenadas_serializer(coordenadas_t *self, int16_t *length) {
+char *coordenadas_serializer(coordenada_t *self, int16_t *length) {
 	char *serialized = malloc(2 * sizeof(int));
 	int offset = 0, tmp_size = 0;
 
@@ -192,8 +192,8 @@ char *coordenadas_serializer(coordenadas_t *self, int16_t *length) {
 	return serialized;
 }
 
-coordenadas_t *coordenadas_deserializer(char *serialized) {
-	coordenadas_t *self = malloc(sizeof(coordenadas_t));
+coordenada_t *coordenadas_deserializer(char *serialized) {
+	coordenada_t *self = malloc(sizeof(coordenada_t));
 	int offset = 0, tmp_size = 0;
 
 	memcpy(&self->ejeX, serialized, tmp_size = sizeof(int));
@@ -205,11 +205,11 @@ coordenadas_t *coordenadas_deserializer(char *serialized) {
 	return self;
 }
 
-void coordenadas_destroy(coordenadas_t *self) {
+void coordenadas_destroy(coordenada_t *self) {
 	free(self);
 }
 
-char *indicaciones_serializer(indicaciones_t *self, int16_t *length) {
+char *indicaciones_serializer(indicacion_t *self, int16_t *length) {
 	char *serialized = malloc(strlen(self->eje) + strlen(self->sentido) + 2);
 	int offset = 0, tmp_size = 0;
 
@@ -225,8 +225,8 @@ char *indicaciones_serializer(indicaciones_t *self, int16_t *length) {
 	return serialized;
 }
 
-indicaciones_t *indicaciones_deserializer(char *serialized) {
-	indicaciones_t *self = malloc(sizeof(indicaciones_t));
+indicacion_t *indicaciones_deserializer(char *serialized) {
+	indicacion_t *self = malloc(sizeof(indicacion_t));
 	int offset = 0, tmp_size = 0;
 
 	for (tmp_size = 1; serialized[tmp_size - 1] != '\0'; tmp_size++)
@@ -244,7 +244,7 @@ indicaciones_t *indicaciones_deserializer(char *serialized) {
 	return self;
 }
 
-void indicaciones_destroy(indicaciones_t *self) {
+void indicaciones_destroy(indicacion_t *self) {
 	free(self->eje);
 	free(self->sentido);
 	free(self);

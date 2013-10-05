@@ -12,7 +12,7 @@ void MoverPersonaje(ITEM_NIVEL* i, char personaje, int x, int y);
 void CrearPersonaje(ITEM_NIVEL** i, char id, int x , int y, int vidas, int socket);
 void CrearCaja(ITEM_NIVEL** i, char id, int x , int y, int cant);
 void CrearItem(ITEM_NIVEL** i, char id, int x, int y, char tipo, int cant, int socket);
-coordenadas_t *obtenerCoordenadas(ITEM_NIVEL* i, char id);
+coordenada_t *obtenerCoordenadas(ITEM_NIVEL* i, char id);
 void matarPersonaje(ITEM_NIVEL** i,ITEM_NIVEL** j, char id);
 void incrementarRecurso(ITEM_NIVEL* i, char id, int cant);
 int darRecursoPersonaje(ITEM_NIVEL** i, ITEM_NIVEL** j, char id, char objetoId);

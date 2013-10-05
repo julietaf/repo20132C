@@ -29,12 +29,12 @@ typedef struct {
 typedef struct {
 	int ejeX;
 	int ejeY;
-}__attribute__((__packed__)) coordenadas_t;
+}__attribute__((__packed__)) coordenada_t;
 
 typedef struct {
 	char *eje;
 	char *sentido;
-}__attribute__((__packed__)) indicaciones_t;
+}__attribute__((__packed__)) indicacion_t;
 
 typedef struct {
 	char *addr;
@@ -86,7 +86,9 @@ enum enum_protocolo {
 	PERSONAJE_FINALIZO = 14,
 	// Planificador <<<< Nivel
 	// IDEM Hilo Personaje <<<< Planificador
-	NOTIFICAR_ALGORITMO_PLANIFICACION = 15
+	NOTIFICAR_ALGORITMO_PLANIFICACION = 15,
+	VICTIMA_DEADLOCK = 16,
+	VICTIMA_ENEMIGO = 17
 };
 
 int sockets_getSocket(void);
@@ -100,12 +102,12 @@ int sockets_createClient(char *, char *);
 char *ipInfo_serializer(ip_info_t *self, int16_t *length);
 ip_info_t *ipInfo_deserializer(char *serialized);
 void ipInfo_destroy(ip_info_t *ipInfo);
-char *coordenadas_serializer(coordenadas_t *self, int16_t *length);
-coordenadas_t *coordenadas_deserializer(char *serialized);
-void coordenadas_destroy(coordenadas_t *self);
-char *indicaciones_serializer(indicaciones_t *self, int16_t *length);
-indicaciones_t *indicaciones_deserializer(char *serialized);
-void indicaciones_destroy(indicaciones_t *self);
+char *coordenadas_serializer(coordenada_t *self, int16_t *length);
+coordenada_t *coordenadas_deserializer(char *serialized);
+void coordenadas_destroy(coordenada_t *self);
+char *indicaciones_serializer(indicacion_t *self, int16_t *length);
+indicacion_t *indicaciones_deserializer(char *serialized);
+void indicaciones_destroy(indicacion_t *self);
 char *nivelIni_serializer(nivel_ini_t *self, int16_t *length);
 nivel_ini_t *nivelIni_deserializer(char *serialized);
 void nivelIni_destroy(nivel_ini_t *self);

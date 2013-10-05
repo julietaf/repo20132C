@@ -136,15 +136,15 @@ void restarRecursos(ITEM_NIVEL* ListaItems, char id, int cant) {
 
 }
 
-coordenadas_t* obtenerCoordenadas(ITEM_NIVEL* ListaItems, char id) {
+coordenada_t* obtenerCoordenadas(ITEM_NIVEL* ListaItems, char id) {
 	ITEM_NIVEL * temp = ListaItems;
-	coordenadas_t* resul = NULL;
+	coordenada_t* resul = NULL;
 
 	while ((temp != NULL )&& (temp->id != id)){
 	temp = temp->next;
 }
 	if ((temp != NULL )&& (temp->id == id)){
-	resul=malloc(sizeof(coordenadas_t));
+	resul=malloc(sizeof(coordenada_t));
 	resul->ejeX = temp->posx;
 	resul->ejeY = temp->posy;
 }
