@@ -70,24 +70,24 @@ enum enum_protocolo {
 	HANDSHAKE_PLANIFICADOR,
 	HANDSHAKE_ORQUESTADOR,
 	HANDSHAKE_NIVEL,
-	// Hilo Personaje >>>> Planificador
+// Hilo Personaje >>>> Planificador
 	NOTIFICAR_DATOS_PERSONAJE,
 	UBICACION_CAJA,
 	NOTIFICACION_MOVIMIENTO,
 	SOLICITAR_RECURSO,
 	FINALIZAR_NIVEL,
-	// Hilo Personaje <<<< Planificador
+// Hilo Personaje <<<< Planificador
 	TURNO_CONCEDIDO,
 	COORDENADA_CAJA,
 	OTORGAR_RECURSO,
 	NEGAR_RECURSO,
 	NOTIFICAR_MUERTE,
-	// Planificador >>>> Nivel
-	// IDEM Hilo Personaje >>>> Planificador
+// Planificador >>>> Nivel
+// IDEM Hilo Personaje >>>> Planificador
 	NOTIFICAR_DATOS_PLANIFICADOR,
 	PERSONAJE_FINALIZO,
-	// Planificador <<<< Nivel
-	// IDEM Hilo Personaje <<<< Planificador
+// Planificador <<<< Nivel
+// IDEM Hilo Personaje <<<< Planificador
 	NOTIFICAR_DATOS_NIVEL,
 	NOTIFICAR_ALGORITMO_PLANIFICACION,
 	VICTIMA_DEADLOCK,

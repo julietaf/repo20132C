@@ -28,12 +28,11 @@ void orquestador(void) {
 		for (sockfd = 0; sockfd <= sockfdMax; sockfd++) {
 			if (FD_ISSET(sockfd, &bagTemp)) {
 				if (sockfd == escuchasfd) {
-					nuevoSockfd = aceptarNuevaConexion(sockfd);
-					agregarSockfd(&bagMaster, &sockfdMax, nuevoSockfd);
+					aceptarNuevaConexion(sockfd, &bagMaster, &sockfdMax);
 				} else {
 					nbytes = atenderPedido(sockfd);
 
-					if (!nbytes) {
+					if (nbytes == 0) {
 						removerSockfd(&bagMaster, sockfd);
 					}
 				}
@@ -46,17 +45,37 @@ int atenderPedido(int sockfd) {
 	return 0;
 }
 
-int aceptarNuevaConexion(int sockfd) {
+void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax) {
 	int nuevoSockfd = sockets_accept(sockfd);
 	header_t header;
 
 	recv(nuevoSockfd, &header, sizeof(header_t), MSG_WAITALL);
 
-	if (header.type == HANDSHAKE_PERSONAJE) {
+	switch (header.type) {
+	case HANDSHAKE_PERSONAJE:
 		enviarHandshakeOrquestador(nuevoSockfd);
+		//TODO: Delegar a el hilo planificador.
+		break;
+	case HANDSHAKE_NIVEL:
+		enviarHandshakeOrquestador(nuevoSockfd);
+		crearNuevoHiloPlanificador(nuevoSockfd);
+		agregarSockfd(bagMaster, sockfdMax, nuevoSockfd);
+		break;
 	}
+}
 
-	return nuevoSockfd;
+void crearNuevoHiloPlanificador(int sockfd) {
+	datos_planificador_t *datosPlanificador = malloc(
+			sizeof(datos_planificador_t));
+	header_t header;
+	recv(sockfd, &header, sizeof(header_t), MSG_WAITALL);
+
+	if (header.type == NOTIFICACION_DATOS) {
+
+		char *nombreNivel;
+		recv(sockfd, nombreNivel, header.length, MSG_WAITALL);
+
+	}
 }
 
 int enviarHandshakeOrquestador(int sockfd) {

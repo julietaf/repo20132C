@@ -26,15 +26,23 @@ typedef struct {
 	t_log_level detalleLog;
 } configuracion_plataforma_t;
 
+typedef struct {
+	pthread_t hilo;
+	char *nombre;
+	t_list personajesListos;
+	t_list personajesBloqueados;
+} datos_planificador_t;
+
 configuracion_plataforma_t *configuracion;
 t_log *logFile;
 
 void orquestador(void);
 void agregarSockfd(fd_set *bagMaster, int *sockfdMax, int sockfd);
 void removerSockfd(fd_set *bagMaster, int sockfd);
-int aceptarNuevaConexion(int sockfd);
+void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax);
 configuracion_plataforma_t *getConfiguracion(void);
 int atenderPedido(int sockfd);
 int enviarHandshakeOrquestador(int sockfd);
+void crearNuevoHiloPlanificador(int sockfd);
 
 #endif /* ORQUESTADOR_H_ */
