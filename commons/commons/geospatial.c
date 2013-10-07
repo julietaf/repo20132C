@@ -5,10 +5,7 @@
  *      Author: utnso
  */
 #include "geospatial.h"
-#include "collections/list.c"
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
+
 
 //-----------------------------FUNCIONES PUBLICAS---------------------------------------
 
@@ -134,7 +131,7 @@ coordenada_t* coordenadaRandom(coordenada_t* cMaxima) {
  */
 t_list* movimientoL(coordenada_t* cActual) {
 	int orden, direccion, sentido;
-	coordenada_t* c1, c2, c3;
+	coordenada_t* c1, *c2, *c3;
 	t_list* ret = list_create();
 
 	c1 = malloc(sizeof(coordenada_t));
