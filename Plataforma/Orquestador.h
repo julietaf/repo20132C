@@ -15,6 +15,8 @@
 #include <commons/sockets.h>
 #include <commons/config.h>
 #include <commons/log.h>
+#include <commons/collections/queue.h>
+#include <commons/collections/dictionary.h>
 
 #define LOG_PATH "./txt/log.txt"
 #define CONFIG_PATH "./txt/config.txt"
@@ -27,14 +29,16 @@ typedef struct {
 } configuracion_plataforma_t;
 
 typedef struct {
-	pthread_t hilo;
+	pthread_t *hilo;
 	char *nombre;
-	t_list personajesListos;
-	t_list personajesBloqueados;
+	int sockfdNivel;
+	t_queue *personajesListos;
+	t_queue *personajesBloqueados;
 } datos_planificador_t;
 
 configuracion_plataforma_t *configuracion;
 t_log *logFile;
+t_dictionary *planificadores;
 
 void orquestador(void);
 void agregarSockfd(fd_set *bagMaster, int *sockfdMax, int sockfd);
@@ -44,5 +48,7 @@ configuracion_plataforma_t *getConfiguracion(void);
 int atenderPedido(int sockfd);
 int enviarHandshakeOrquestador(int sockfd);
 void crearNuevoHiloPlanificador(int sockfd);
+datos_planificador_t *crearDatosPlanificador(char *nombre);
+void delegarAlHiloplanificador(int sockfd);
 
 #endif /* ORQUESTADOR_H_ */

@@ -6,6 +6,7 @@
  */
 
 #include "Orquestador.h"
+#include "Planificador.h"
 
 void orquestador(void) {
 	configuracion = getConfiguracion();
@@ -14,7 +15,8 @@ void orquestador(void) {
 	int escuchasfd = sockets_createServer(configuracion->direccionIp,
 			configuracion->puerto, configuracion->backlog);
 	int sockfdMax = escuchasfd;
-	int sockfd, nuevoSockfd, nbytes;
+	planificadores = dictionary_create();
+	int sockfd, nbytes;
 	fd_set bagMaster, bagTemp;
 	FD_ZERO(&bagMaster);
 	FD_ZERO(&bagTemp);
@@ -54,7 +56,7 @@ void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax) {
 	switch (header.type) {
 	case HANDSHAKE_PERSONAJE:
 		enviarHandshakeOrquestador(nuevoSockfd);
-		//TODO: Delegar a el hilo planificador.
+		delegarAlHiloplanificador(nuevoSockfd);
 		break;
 	case HANDSHAKE_NIVEL:
 		enviarHandshakeOrquestador(nuevoSockfd);
@@ -64,18 +66,37 @@ void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax) {
 	}
 }
 
+void delegarAlHiloplanificador(int sockfd) {
+
+}
+
 void crearNuevoHiloPlanificador(int sockfd) {
-	datos_planificador_t *datosPlanificador = malloc(
-			sizeof(datos_planificador_t));
 	header_t header;
 	recv(sockfd, &header, sizeof(header_t), MSG_WAITALL);
 
-	if (header.type == NOTIFICACION_DATOS) {
-
-		char *nombreNivel;
+	if (header.type == NOTIFICAR_DATOS_NIVEL) {
+		char *nombreNivel = malloc(header.length);
 		recv(sockfd, nombreNivel, header.length, MSG_WAITALL);
-
+		datos_planificador_t *datosPlanificador = crearDatosPlanificador(
+				nombreNivel);
+		pthread_create(datosPlanificador->hilo, NULL, (void *) planificador,
+				(void *) datosPlanificador);
+		dictionary_put(planificadores, datosPlanificador->nombre,
+				datosPlanificador);
 	}
+}
+
+datos_planificador_t *crearDatosPlanificador(char *nombre) {
+	datos_planificador_t *datosPlanificador = malloc(
+			sizeof(datos_planificador_t));
+	datosPlanificador->nombre = malloc(strlen(nombre));
+	strcpy(datosPlanificador->nombre, nombre);
+	datosPlanificador->hilo = malloc(sizeof(pthread_t));
+	datosPlanificador->personajesBloqueados = queue_create();
+	datosPlanificador->personajesListos = queue_create();
+	free(nombre);
+
+	return datosPlanificador;
 }
 
 int enviarHandshakeOrquestador(int sockfd) {
