@@ -9,6 +9,11 @@
 #define GEOSPATIAL_H_
 
 #include "sockets.h"
+//#include "collections/list.c" TODO: Preguntar por herencia????
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+
 
 int obtenerDistancia (coordenada_t* inicio, coordenada_t* fin);
 coordenada_t* coordenadaMovimientoAlternado(coordenada_t* posicionActual, coordenada_t* poscionObjetivio);
