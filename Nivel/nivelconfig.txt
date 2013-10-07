@@ -1,0 +1,14 @@
+Nombre=Level1-1
+# CajaX=[Nombre],[Simbolo],[Instancias],[PosX],[PosY]
+Caja1=Hongos,H,3,10,10
+Caja2=Monedas, M,5,3,19
+Caja3=Vidas,V,2,17,5
+Caja4=Bloques,B,4,50,21
+Caja5=Flores,F,1,3,3
+#orquestador=192.168.1.101:8080
+#localhost=192.168.1.105:8080
+orquestador=127.0.0.1:8080
+localhost=127.0.0.1:8081
+TiempoChequeoDeadlock=20
+Recovery=1
+Log=INFO
