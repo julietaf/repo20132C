@@ -51,6 +51,12 @@ typedef struct {
 }__attribute__((__packed__)) personaje_ini_t;
 
 typedef struct {
+	int algoritmo;
+	int quantum;
+	int retardo;
+}__attribute__((__packed__)) planificador_ini_t;
+
+typedef struct {
 	char id;
 	int quantity;
 }__attribute__((__packed__)) recurso_t;
@@ -94,6 +100,11 @@ enum enum_protocolo {
 	VICTIMA_ENEMIGO
 };
 
+enum enum_algoritmoPlanificador{
+	ROUND_ROBIN,
+	SRDF
+};
+
 int sockets_getSocket(void);
 int sockets_bind(int, char *, char *);
 int sockets_listen(int, int);
@@ -133,5 +144,8 @@ char *personajeDesbloqueado_serializer(personaje_desbloqueado_t *self,
 personaje_desbloqueado_t *personajeDesbloqueado_deserializer(char *data);
 char *listaPersonajeDesbloqueado_serializer(t_list *self, int16_t *length);
 t_list *listaPersonajeDesbloqueado_deserializer(char *data, int16_t length);
+char *planificadorIni_serializer(planificador_ini_t *self, int16_t *length);
+planificador_ini_t *planificadorIni_deserializer(char *serialized);
+void planificadorIni_destroy(planificador_ini_t*self);
 
 #endif /* SOCKETS_H_ */

@@ -138,6 +138,8 @@ int sockets_createClient(char *addr, char *port) {
 	return sockfd;
 }
 
+//------------------------------------------ipInfo------------------------------------------------------------
+
 char *ipInfo_serializer(ip_info_t *self, int16_t *length) {
 	char *serialized = malloc(strlen(self->addr) + strlen(self->port) + 2);
 	int offset = 0, tmp_size = 0;
@@ -152,6 +154,8 @@ char *ipInfo_serializer(ip_info_t *self, int16_t *length) {
 
 	return serialized;
 }
+
+
 
 ip_info_t *ipInfo_deserializer(char *serialized) {
 	ip_info_t *self = malloc(sizeof(ip_info_t));
@@ -177,6 +181,8 @@ void ipInfo_destroy(ip_info_t *ipInfo) {
 	free(ipInfo->port);
 	free(ipInfo);
 }
+
+//------------------------------------------coordenadas------------------------------------------------------------
 
 char *coordenadas_serializer(coordenada_t *self, int16_t *length) {
 	char *serialized = malloc(2 * sizeof(int));
@@ -208,6 +214,8 @@ coordenada_t *coordenadas_deserializer(char *serialized) {
 void coordenadas_destroy(coordenada_t *self) {
 	free(self);
 }
+
+//------------------------------------------indicaciones------------------------------------------------------------
 
 char *indicaciones_serializer(indicacion_t *self, int16_t *length) {
 	char *serialized = malloc(strlen(self->eje) + strlen(self->sentido) + 2);
@@ -249,6 +257,8 @@ void indicaciones_destroy(indicacion_t *self) {
 	free(self->sentido);
 	free(self);
 }
+
+//------------------------------------------Nivel Ini------------------------------------------------------------
 
 char *nivelIni_serializer(nivel_ini_t *self, int16_t *length) {
 	char *serialized = malloc(strlen(self->addr) + strlen(self->port) + 9);
@@ -302,6 +312,8 @@ void nivelIni_destroy(nivel_ini_t *self) {
 	free(self->fhm);
 	free(self);
 }
+
+//------------------------------------------Personaje Ini------------------------------------------------------------
 
 char *personajeIni_serializer(personaje_ini_t *self, int16_t *length) {
 	char *serialized = malloc(
@@ -376,6 +388,8 @@ int enviarHandshake(int sockfd, int headerType) {
 	return sockets_send(sockfd, &header, '\0');
 }
 
+//------------------------------------------Recursos------------------------------------------------------------
+
 char* recursos_serializer(recurso_t* self, int16_t *lenght) {
 	char id = self->id;
 	char *serialized = malloc(sizeof(char) + sizeof(int));
@@ -441,6 +455,8 @@ void listaRecursos_destroy(t_list* self) {
 void recurso_destroy(recurso_t *recurso) {
 	free(recurso);
 }
+
+//------------------------------------------Personaje Interbloqueado------------------------------------------------------------
 
 char* personajesInterbloqueados_serializer(t_list* self, int16_t *length) {
 	char* serialized = malloc(self->elements_count);
@@ -550,4 +566,44 @@ t_list *listaPersonajeDesbloqueado_deserializer(char *data, int16_t length) {
 	}
 
 	return self;
+}
+
+//-------------------------------------------- Planificador INI ------------------------------------------------------------
+
+char *planificadorIni_serializer(planificador_ini_t *self, int16_t *length) {
+	char *serialized = malloc(3 * sizeof(int));
+	int offset = 0, tmp_size = 0;
+
+	memcpy(serialized, &self->algoritmo , tmp_size = sizeof(int));
+	offset = tmp_size;
+
+	memcpy(serialized + offset, &self->quantum, tmp_size = sizeof(int));
+	offset += tmp_size;
+
+	memcpy(serialized + offset, &self->retardo, tmp_size = sizeof(int));
+	offset += tmp_size;
+
+	*length = offset;
+
+	return serialized;
+}
+
+planificador_ini_t *planificadorIni_deserializer(char *serialized) {
+	planificador_ini_t *self = malloc(sizeof(coordenada_t));
+	int offset = 0, tmp_size = 0;
+
+	memcpy(&self->algoritmo, serialized, tmp_size = sizeof(int));
+	offset = tmp_size;
+
+	memcpy(&self->quantum, serialized + offset, tmp_size = sizeof(int));
+	offset += tmp_size;
+
+	memcpy(&self->retardo, serialized + offset, tmp_size = sizeof(int));
+	offset += tmp_size;
+
+	return self;
+}
+
+void planificadorIni_destroy(planificador_ini_t*self) {
+	free(self);
 }
