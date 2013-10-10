@@ -569,7 +569,7 @@ t_list *listaPersonajeDesbloqueado_deserializer(char *data, int16_t length) {
 }
 
 //-------------------------------------------- Planificador INI ------------------------------------------------------------
-
+//TODO: Testear
 char *planificadorIni_serializer(planificador_ini_t *self, int16_t *length) {
 	char *serialized = malloc(3 * sizeof(int));
 	int offset = 0, tmp_size = 0;

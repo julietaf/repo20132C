@@ -39,6 +39,8 @@ typedef struct nivel_conf_t {
         char *logLevel;
         int deadlockTime;
         int recovery;
+        int enemigos;
+        int sleepEnemigos;
 } NIVEL_CONF;
 
 //-----------------------------------------GLOBALES-----------------------------------------------------
@@ -66,5 +68,10 @@ int conectarOrquestador();
 void hacerHandshake(int sockfdReceptor);
 void enviarDatosConexion();
 void recibirDatosPlanificador();
-
+void atenderMensajePlanificador(int sockfd);
+int validarRecive(int sockfd, header_t* h);
+void tratarNuevoPersonaje(char* data);
+void tratarMovimiento(char* data);
+void tratarSolicitudRecurso(char* data);
+void tratarFinalizacionPersonaje(char* data);
 #endif /* NIVEL_H_ */

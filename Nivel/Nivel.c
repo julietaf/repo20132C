@@ -56,6 +56,12 @@ NIVEL_CONF* inicializarCongiuracionNivel() {
 				strlen(config_get_string_value(conF, "Log")));
 		strcpy(configObj->logLevel, config_get_string_value(conF, "Log"));
 	}
+	if (config_has_property(conF, "Enemigos")) {
+		configObj->enemigos = config_get_int_value(conF, "Enemigos");
+	}
+	if (config_has_property(conF, "SleepEnemigos")) {
+		configObj->sleepEnemigos = config_get_int_value(conF, "SleepEnemigos");
+	}
 	config_destroy(conF);
 	return configObj;
 }
@@ -91,7 +97,7 @@ void inicializarConfiguracionCajas() {
 					config_get_string_value(configFile, u), ",");
 			crearCajasConVector(array_values);
 		} else {
-			log_warning(logFile, "No se pudo levantar la caja: %s", u);
+			log_warning(logFile, "No se pudo inicializar la caja: %s", u);
 		}
 		i++;
 	};
@@ -231,6 +237,77 @@ void recibirDatosPlanificador() {
 				infoPlanificador->addr, infoPlanificador->port);
 	}
 	free(data);
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void atenderMensajePlanificador(int sockfd) {
+	header_t h;
+	if (validarRecive(sockfd, &h)) {
+		char* data = malloc(h.length);
+		switch (h.type) {
+		case NOTIFICAR_DATOS_PERSONAJE:
+			recv(sockfd, data, h.length, MSG_WAITALL);
+			tratarNuevoPersonaje(data);
+			break;
+		case NOTIFICACION_MOVIMIENTO:
+			recv(sockfd, data, h.length, MSG_WAITALL);
+			tratarMovimiento(data);
+			break;
+		case SOLICITAR_RECURSO:
+			recv(sockfd, data, h.length, MSG_WAITALL);
+			tratarSolicitudRecurso(data);
+			break;
+		case PERSONAJE_FINALIZO:
+			recv(sockfd, data, h.length, MSG_WAITALL);
+			tratarFinalizacionPersonaje(data);
+			break;
+		default:
+			log_error(logFile,
+					"Protocolo invalido (%d) para comunicarse con el nivel",
+					h.type);
+			break;
+		}
+		free(data);
+	}
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+int validarRecive(int sockfd, header_t* h) {
+	int nbytes;
+	if ((nbytes = recv(sockfd, h, sizeof(header_t), MSG_WAITALL)) <= 0) {
+		if (nbytes == 0) { //conexion cerrada
+			log_warning(logFile, "Socket: %d, desconectado inesperadamente",
+					sockfd);
+		} else
+			log_error(logFile, "Error al receive de socket: %d", sockfd);
+	}
+	return nbytes;
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void tratarNuevoPersonaje(char* data){
+	//TODO:
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void tratarMovimiento(char* data){
+	//TODO:
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void tratarSolicitudRecurso(char* data){
+	//TODO:
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void tratarFinalizacionPersonaje(char* data){
+	//TODO:
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
