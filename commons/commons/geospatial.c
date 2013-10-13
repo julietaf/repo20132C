@@ -6,7 +6,6 @@
  */
 #include "geospatial.h"
 
-
 //-----------------------------FUNCIONES PUBLICAS---------------------------------------
 
 /**
@@ -17,7 +16,7 @@ int obtenerDistancia(coordenada_t* inicio, coordenada_t* fin) {
 	int distX;
 	int distY;
 	distX = obtenerDistanciaEnX(inicio, fin);
-	distY = obtenerDistanciaEnX(inicio, fin);
+	distY = obtenerDistanciaEnY(inicio, fin);
 	return distX + distY;
 }
 
@@ -25,31 +24,41 @@ int obtenerDistancia(coordenada_t* inicio, coordenada_t* fin) {
  * @NAME: coordenadaMovimientoAlternado
  * @DESC: Retorna la coordenada de la proxima posicion a moverse
  */
-coordenada_t* coordenadaMovimientoAlternado(coordenada_t* posicionActual,
+void coordenadaMovimientoAlternado(coordenada_t* posicionActual,
 		coordenada_t* posicionObjetivio) {
-	int flag = posicionActual->ejeX % 2;
-	coordenada_t* posicionSiguiente = posicionActual;
 
-	if (obtenerDistancia(posicionActual, posicionObjetivio) != 0) { //Validacion en el objetivo
-		return posicionActual;
+	if (obtenerDistancia(posicionActual, posicionObjetivio) == 0) { //Validacion en el objetivo
+		return;
 	}
 
 	if (obtenerDistanciaEnX(posicionActual, posicionObjetivio) == 0) { //Validacion Caso solo por Y
-		posicionSiguiente = desplazarEnY(posicionActual, posicionObjetivio);
-		return posicionSiguiente;
+		desplazarEnY(posicionActual, posicionObjetivio);
+		return;
+
 	}
 
 	if (obtenerDistanciaEnY(posicionActual, posicionObjetivio) == 0) { //Validacion Caso solo por x
-		posicionSiguiente = desplazarEnX(posicionActual, posicionObjetivio);
-		return posicionSiguiente;
+		desplazarEnX(posicionActual, posicionObjetivio);
+		return;
 	}
 
-	if (flag) {
-		posicionSiguiente = desplazarEnY(posicionActual, posicionObjetivio);
-	} else {
-		posicionSiguiente = desplazarEnX(posicionActual, posicionObjetivio);
+	if (esPar(posicionActual->ejeX) && esPar(posicionActual->ejeY)) {
+		desplazarEnX(posicionActual, posicionObjetivio);
+		return;
 	}
-	return posicionSiguiente;
+	if (!esPar(posicionActual->ejeX) && esPar(posicionActual->ejeY)) {
+		desplazarEnY(posicionActual, posicionObjetivio);
+		return;
+	}
+	if (!esPar(posicionActual->ejeX) && !esPar(posicionActual->ejeY)) {
+		desplazarEnX(posicionActual, posicionObjetivio);
+		return;
+	}
+	if (esPar(posicionActual->ejeX) && !esPar(posicionActual->ejeY)) {
+		desplazarEnY(posicionActual, posicionObjetivio);
+		return;
+	}
+	return;
 
 }
 
@@ -61,22 +70,22 @@ coordenada_t* coordenadaMovimientoAlternado(coordenada_t* posicionActual,
 indicacion_t* indicacionMovimientoAlternado(coordenada_t* posicionActual,
 		coordenada_t* posicionObjetivio) {
 	indicacion_t* indicacion = malloc(sizeof(indicacion_t));
-	coordenada_t* posicionSiguiente = coordenadaMovimientoAlternado(
-			posicionActual, posicionObjetivio);
-	if (coordenadasIguales(posicionSiguiente, posicionActual)) {
-		return indicacion;
-	}
-
-	if (posicionSiguiente->ejeX == posicionActual->ejeX) {
-		indicacion->eje = "EjeY";
-		indicacion->sentido =
-				posicionSiguiente->ejeY > posicionActual->ejeY ? "+" : "-";
-	} else {
-		indicacion->eje = "EjeX";
-		indicacion->sentido =
-				posicionSiguiente->ejeX > posicionActual->ejeX ? "+" : "-";
-	}
-
+//	coordenada_t* posicionSiguiente = coordenadaMovimientoAlternado(
+//			posicionActual, posicionObjetivio);
+//	if (coordenadasIguales(posicionSiguiente, posicionActual)) {
+//		return indicacion;
+//	}
+//
+//	if (posicionSiguiente->ejeX == posicionActual->ejeX) {
+//		indicacion->eje = "EjeY";
+//		indicacion->sentido =
+//				posicionSiguiente->ejeY > posicionActual->ejeY ? "+" : "-";
+//	} else {
+//		indicacion->eje = "EjeX";
+//		indicacion->sentido =
+//				posicionSiguiente->ejeX > posicionActual->ejeX ? "+" : "-";
+//	}
+//
 	return indicacion;
 }
 
@@ -89,11 +98,20 @@ int coordenadasIguales(coordenada_t* c1, coordenada_t* c2) {
 }
 
 /**
+ * @NAME: coordenadasIguales
+ * @DESC: Retorna 1 si a las componentes de las coordenadas son iguales a
+ * los enteros pasados y 0 en csaso contrario
+ */
+int coordenadasIgualesInt(coordenada_t* c1, int x, int y) {
+	return (c1->ejeX == x) && (c1->ejeY == y);
+}
+
+/**
  * @NAME: coordenadaEvasion
  * @DESC: Retorna la proxima coordenada en funcion de las posicion a evadir y del
  * objetivo.
  */
-coordenada_t* coordenadaEvasion(coordenada_t* obstaculo, coordenada_t* objetivo,
+void coordenadaEvasion(coordenada_t* obstaculo, coordenada_t* objetivo,
 		coordenada_t* posActual, coordenada_t* cMaxima) {
 
 	if (obstaculo->ejeX == posActual->ejeX) {
@@ -108,8 +126,6 @@ coordenada_t* coordenadaEvasion(coordenada_t* obstaculo, coordenada_t* objetivo,
 		}
 		return desplazarEnY(posActual, objetivo);
 	}
-
-	return posActual;
 }
 
 /**
@@ -124,13 +140,32 @@ coordenada_t* coordenadaRandom(coordenada_t* cMaxima) {
 	ret->ejeY = y;
 	return ret;
 }
+
+/**
+ * @NAME: movimientoLRandom
+ * @DESC: Retorna una lista con los 3 movimientos de una L al azar
+ */
+t_list* movimientoLRandom(coordenada_t* cActual) {
+	int orden, direccion, sentido;
+
+	orden = randomNumber(0, 1);
+	direccion = randomNumber(0, 3);
+	sentido = randomNumber(0, 1);
+
+	return movimientoL(cActual, orden, direccion, sentido);
+}
+
 /**
  * @NAME: movimientoL
- * @DESC: retorna un lista con las 3 posiciones de un movimiento en "L" al azar de las
- * 18 posibles.
+ * @DESC: retorna un lista con las 3 posiciones de un movimiento en "L" pasando por paremetro
+ * orden, direccion y sentido.
+ * @PARAM: Direccion 0 arriba, 1 derecha, 2 abajo, 3 izquierda
+ * 		   Orden 1 = primero 2 despues 1, 0 viceversa
+ * 		   Sentido = 1 dobla en positivo, 0 en negativo
  */
-t_list* movimientoL(coordenada_t* cActual) {
-	int orden, direccion, sentido;
+t_list* movimientoL(coordenada_t* cActual, int orden, int direccion,
+		int sentido) {
+
 	coordenada_t* c1, *c2, *c3;
 	t_list* ret = list_create();
 
@@ -138,88 +173,120 @@ t_list* movimientoL(coordenada_t* cActual) {
 	c2 = malloc(sizeof(coordenada_t));
 	c3 = malloc(sizeof(coordenada_t));
 
-	orden = randomNumber(0, 1);
-	direccion = randomNumber(0, 3);
-	sentido = randomNumber(0, 1);
-
 	switch (direccion) {
 	case 0:
-		c1 = desplazarEnYPositivo(cActual);
+//		c1 = desplazarEnYPositivo(cActual);
+		modificarCoordenada(c1, cActual->ejeX, cActual->ejeY+1);
 		if (sentido) { //Positivo
 			if (orden) { // 2 1
-				c2 = desplazarEnYPositivo(c1);
-				c3 = desplazarEnXPositivo(c2);
+//				c2 = desplazarEnYPositivo(c1);
+//				c3 = desplazarEnXPositivo(c2);
+				modificarCoordenada(c2, c1->ejeX, c1->ejeY + 1);
+				modificarCoordenada(c3, c2->ejeX +1, c2->ejeY);
 			} else { // 1 2
-				c2 = desplazarEnXPositivo(c1);
-				c3 = desplazarEnXPositivo(c2);
+//				c2 = desplazarEnXPositivo(c1);
+//				c3 = desplazarEnXPositivo(c2);
+				modificarCoordenada(c2, c1->ejeX +1, c1->ejeY);
+				modificarCoordenada(c3, c2->ejeX +1, c2->ejeY);
 			}
 		} else {
 			if (orden) { // 2 1
-				c2 = desplazarEnYPositivo(c1);
-				c3 = desplazarEnXNegativo(c2);
+//				c2 = desplazarEnYPositivo(c1);
+//				c3 = desplazarEnXNegativo(c2);
+				modificarCoordenada(c2, c1->ejeX, c1->ejeY + 1);
+				modificarCoordenada(c3, c2->ejeX -1, c2->ejeY);
 			} else { // 1 2
-				c2 = desplazarEnXNegativo(c1);
-				c3 = desplazarEnXNegativo(c2);
+//				c2 = desplazarEnXNegativo(c1);
+//				c3 = desplazarEnXNegativo(c2);
+				modificarCoordenada(c2, c1->ejeX -1, c1->ejeY);
+				modificarCoordenada(c3, c2->ejeX -1, c2->ejeY);
 			}
 		}
 		break;
 	case 1:
-		c1 = desplazarEnXPositivo(cActual);
+//		c1 = desplazarEnXPositivo(cActual);
+		modificarCoordenada(c1, cActual->ejeX+1, cActual->ejeY);
 		if (sentido) { //Positivo
 			if (orden) { // 2 1
-				c2 = desplazarEnXPositivo(c1);
-				c3 = desplazarEnYPositivo(c2);
+//				c2 = desplazarEnXPositivo(c1);
+//				c3 = desplazarEnYPositivo(c2);
+				modificarCoordenada(c2, c1->ejeX +1, c1->ejeY);
+				modificarCoordenada(c3, c2->ejeX, c2->ejeY +1);
 			} else { // 1 2
-				c2 = desplazarEnYPositivo(c1);
-				c3 = desplazarEnYPositivo(c2);
+//				c2 = desplazarEnYPositivo(c1);
+//				c3 = desplazarEnYPositivo(c2);
+				modificarCoordenada(c2, c1->ejeX, c1->ejeY + 1);
+				modificarCoordenada(c3, c2->ejeX, c2->ejeY + 1);
 			}
 		} else {
 			if (orden) { // 2 1
-				c2 = desplazarEnXPositivo(c1);
-				c3 = desplazarEnYNegativo(c2);
+//				c2 = desplazarEnXPositivo(c1);
+//				c3 = desplazarEnYNegativo(c2);
+				modificarCoordenada(c2, c1->ejeX + 1, c1->ejeY);
+				modificarCoordenada(c3, c2->ejeX, c2->ejeY -1);
 			} else { // 1 2
-				c2 = desplazarEnYNegativo(c1);
-				c3 = desplazarEnYNegativo(c2);
+//				c2 = desplazarEnYNegativo(c1);
+//				c3 = desplazarEnYNegativo(c2);
+				modificarCoordenada(c2, c1->ejeX, c1->ejeY - 1);
+				modificarCoordenada(c3, c2->ejeX, c2->ejeY - 1);
 			}
 		}
 		break;
 	case 2:
-		c1 = desplazarEnYNegativo(cActual);
+//		c1 = desplazarEnYNegativo(cActual);
+		modificarCoordenada(c1, cActual->ejeX, cActual->ejeY - 1);
 		if (sentido) { //Positivo
 			if (orden) { // 2 1
-				c2 = desplazarEnYNegativo(c1);
-				c3 = desplazarEnXPositivo(c2);
+//				c2 = desplazarEnYNegativo(c1);
+//				c3 = desplazarEnXPositivo(c2);
+				modificarCoordenada(c2, c1->ejeX, c1->ejeY - 1);
+				modificarCoordenada(c3, c2->ejeX + 1, c2->ejeY );
 			} else { // 1 2
-				c2 = desplazarEnXPositivo(c1);
-				c3 = desplazarEnXPositivo(c2);
+//				c2 = desplazarEnXPositivo(c1);
+//				c3 = desplazarEnXPositivo(c2);
+				modificarCoordenada(c2, c1->ejeX +1, c1->ejeY);
+				modificarCoordenada(c3, c2->ejeX +1, c2->ejeY);
 			}
 		} else {
 			if (orden) { // 2 1
-				c2 = desplazarEnYNegativo(c1);
-				c3 = desplazarEnXNegativo(c2);
+//				c2 = desplazarEnYNegativo(c1);
+//				c3 = desplazarEnXNegativo(c2);
+				modificarCoordenada(c2, c1->ejeX, c1->ejeY - 1);
+				modificarCoordenada(c3, c2->ejeX -1, c2->ejeY);
 			} else { // 1 2
-				c2 = desplazarEnXNegativo(c1);
-				c3 = desplazarEnXNegativo(c2);
+//				c2 = desplazarEnXNegativo(c1);
+//				c3 = desplazarEnXNegativo(c2);
+				modificarCoordenada(c2, c1->ejeX -1, c1->ejeY);
+				modificarCoordenada(c3, c2->ejeX -1, c2->ejeY);
 			}
 		}
 		break;
 	case 3:
-		c1 = desplazarEnXNegativo(cActual);
+//		c1 = desplazarEnXNegativo(cActual);
+		modificarCoordenada(c1, cActual->ejeX -1 , cActual->ejeY);
 		if (sentido) { //Positivo
 			if (orden) { // 2 1
-				c2 = desplazarEnXNegativo(c1);
-				c3 = desplazarEnYPositivo(c2);
+//				c2 = desplazarEnXNegativo(c1);
+//				c3 = desplazarEnYPositivo(c2);
+				modificarCoordenada(c2, c1->ejeX -1, c1->ejeY);
+				modificarCoordenada(c3, c2->ejeX , c2->ejeY+1);
 			} else { // 1 2
-				c2 = desplazarEnYPositivo(c1);
-				c3 = desplazarEnYPositivo(c2);
+//				c2 = desplazarEnYPositivo(c1);
+//				c3 = desplazarEnYPositivo(c2);
+				modificarCoordenada(c2, c1->ejeX, c1->ejeY +1);
+				modificarCoordenada(c3, c2->ejeX, c2->ejeY +1);
 			}
 		} else {
 			if (orden) { // 2 1
-				c2 = desplazarEnXNegativo(c1);
-				c3 = desplazarEnYNegativo(c2);
+//				c2 = desplazarEnXNegativo(c1);
+//				c3 = desplazarEnYNegativo(c2);
+				modificarCoordenada(c2, c1->ejeX -1, c1->ejeY);
+				modificarCoordenada(c3, c2->ejeX , c2->ejeY -1);
 			} else { // 1 2
-				c2 = desplazarEnYNegativo(c1);
-				c3 = desplazarEnYNegativo(c2);
+//				c2 = desplazarEnYNegativo(c1);
+//				c3 = desplazarEnYNegativo(c2);
+				modificarCoordenada(c2, c1->ejeX, c1->ejeY  -1);
+				modificarCoordenada(c3, c2->ejeX, c2->ejeY  -1);
 			}
 		}
 		break;
@@ -228,7 +295,7 @@ t_list* movimientoL(coordenada_t* cActual) {
 	list_add_in_index(ret, 1, c2);
 	list_add_in_index(ret, 2, c3);
 
-	return ret ;
+	return ret;
 }
 
 //-----------------------------FUNCIONES PRIVADAS---------------------------------------
@@ -257,54 +324,57 @@ int obtenerDistanciaEnY(coordenada_t* inicio, coordenada_t* fin) {
 	return distY;
 }
 
-coordenada_t* desplazarEnY(coordenada_t* posicionActual,
-		coordenada_t* posicionObjetivio) {
-	coordenada_t* posicionSiguiente;
+void desplazarEnY(coordenada_t* posicionActual, coordenada_t* posicionObjetivio) {
 
 	if (posicionActual->ejeY > posicionObjetivio->ejeY) {
-		posicionSiguiente = desplazarEnYNegativo(posicionActual);
+		desplazarEnYNegativo(posicionActual);
 	} else {
-		posicionSiguiente = desplazarEnYPositivo(posicionActual);
+		desplazarEnYPositivo(posicionActual);
 	}
-	return posicionSiguiente;
+	return;
 }
 
-coordenada_t* desplazarEnX(coordenada_t* posicionActual,
-		coordenada_t* posicionObjetivio) {
-	coordenada_t* posicionSiguiente;
+void desplazarEnX(coordenada_t* posicionActual, coordenada_t* posicionObjetivio) {
+
 	if (posicionActual->ejeX > posicionObjetivio->ejeX) {
-		posicionSiguiente = desplazarEnXNegativo(posicionActual);
+		desplazarEnXNegativo(posicionActual);
 	} else {
-		posicionSiguiente = desplazarEnXPositivo(posicionActual);
+		desplazarEnXPositivo(posicionActual);
 	}
-	return posicionSiguiente;
+	return;
 }
 
-coordenada_t* desplazarEnXPositivo(coordenada_t* coordenada) {
-	coordenada_t* ret = malloc(sizeof(coordenada_t));
-	ret->ejeX = coordenada->ejeX++;
-	ret->ejeY = coordenada->ejeY;
-	return ret;
+
+
+void desplazarEnXPositivo(coordenada_t* coordenada) {
+	coordenada->ejeX++;
 }
 
-coordenada_t* desplazarEnXNegativo(coordenada_t* coordenada) {
-	coordenada_t* ret = malloc(sizeof(coordenada_t));
-	ret->ejeX = coordenada->ejeX--;
-	ret->ejeY = coordenada->ejeY;
-	return ret;
+
+
+void desplazarEnXNegativo(coordenada_t* coordenada) {
+	coordenada->ejeX--;
 }
 
-coordenada_t* desplazarEnYPositivo(coordenada_t* coordenada) {
-	coordenada_t* ret = malloc(sizeof(coordenada_t));
-	ret->ejeX = coordenada->ejeX;
-	ret->ejeY = coordenada->ejeY++;
+
+
+void desplazarEnYPositivo(coordenada_t* coordenada) {
+	coordenada->ejeY++;
+}
+
+
+
+void desplazarEnYNegativo(coordenada_t* coordenada) {
+	coordenada->ejeY--;
+}
+
+coordenada_t* modificarCoordenada(coordenada_t* coordenada, int x, int y) {
+	coordenada->ejeX = x;
+	coordenada->ejeY = y;
+
 	return coordenada;
 }
 
-coordenada_t* desplazarEnYNegativo(coordenada_t* coordenada) {
-	coordenada_t* ret = malloc(sizeof(coordenada_t));
-	ret->ejeX = coordenada->ejeX;
-	ret->ejeY = coordenada->ejeY--;
-	return coordenada;
+int esPar(int a) {
+	return (a % 2 == 0);
 }
-

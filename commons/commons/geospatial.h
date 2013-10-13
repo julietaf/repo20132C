@@ -16,18 +16,23 @@
 
 
 int obtenerDistancia (coordenada_t* inicio, coordenada_t* fin);
-coordenada_t* coordenadaMovimientoAlternado(coordenada_t* posicionActual, coordenada_t* poscionObjetivio);
+void coordenadaMovimientoAlternado(coordenada_t* posicionActual, coordenada_t* poscionObjetivio);
 int obtenerDistanciaEnX(coordenada_t* inicio, coordenada_t* fin) ;
 int obtenerDistanciaEnY(coordenada_t* inicio, coordenada_t* fin);
-coordenada_t* desplazarEnY( coordenada_t* posicionActual,coordenada_t* posicionObjetivio);
-coordenada_t* desplazarEnX( coordenada_t* posicionActual, coordenada_t* posicionObjetivio);
+void desplazarEnY( coordenada_t* posicionActual,coordenada_t* posicionObjetivio);
+void desplazarEnX( coordenada_t* posicionActual, coordenada_t* posicionObjetivio);
 indicacion_t* indicacionMovimientoAlternado(coordenada_t* posicionActual, coordenada_t* posicionObjetivio);
 int coordenadasIguales(coordenada_t* c1, coordenada_t* c2);
+int coordenadasIgualesInt(coordenada_t* c1, int x, int y);
 int randomNumber(int min_num, int max_num);
-coordenada_t* desplazarEnXPositivo(coordenada_t* coordenada);
-coordenada_t* desplazarEnXNegativo(coordenada_t* coordenada);
-coordenada_t* desplazarEnYPositivo(coordenada_t* coordenada);
-coordenada_t* desplazarEnYNegativo(coordenada_t* coordenada);
-t_list* movimientoL(coordenada_t* cActual);
+void desplazarEnXPositivo(coordenada_t* coordenada);
+void desplazarEnXNegativo(coordenada_t* coordenada);
+void desplazarEnYPositivo(coordenada_t* coordenada);
+void desplazarEnYNegativo(coordenada_t* coordenada);
+t_list* movimientoLRandom(coordenada_t* cActual);
+t_list* movimientoL(coordenada_t* cActual, int orden, int direccion, int sentido);
+coordenada_t* modificarCoordenada(coordenada_t* coordenada, int x, int y);
+void coordenadaEvasion(coordenada_t* obstaculo, coordenada_t* objetivo, coordenada_t* posActual, coordenada_t* cMaxima);
+int esPar(int a);
 
 #endif /* GEOSPATIAL_H_ */
