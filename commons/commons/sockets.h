@@ -37,26 +37,6 @@ typedef struct {
 }__attribute__((__packed__)) indicacion_t;
 
 typedef struct {
-	char *addr;
-	char *port;
-	int8_t nivel;
-	char fhm[6];
-}__attribute__((__packed__)) nivel_ini_t;
-
-typedef struct {
-	char *addrN;
-	char *portN;
-	char *addrP;
-	char *portP;
-}__attribute__((__packed__)) personaje_ini_t;
-
-typedef struct {
-	int algoritmo;
-	int quantum;
-	int retardo;
-}__attribute__((__packed__)) planificador_ini_t;
-
-typedef struct {
 	char id;
 	int quantity;
 }__attribute__((__packed__)) recurso_t;
@@ -122,12 +102,6 @@ void coordenadas_destroy(coordenada_t *self);
 char *indicaciones_serializer(indicacion_t *self, int16_t *length);
 indicacion_t *indicaciones_deserializer(char *serialized);
 void indicaciones_destroy(indicacion_t *self);
-char *nivelIni_serializer(nivel_ini_t *self, int16_t *length);
-nivel_ini_t *nivelIni_deserializer(char *serialized);
-void nivelIni_destroy(nivel_ini_t *self);
-char *personajeIni_serializer(personaje_ini_t *self, int16_t *length);
-personaje_ini_t *personajeIni_deserializer(char *serialized);
-void personajeIni_destroy(personaje_ini_t *self);
 int enviarHandshake(int sockfd, int headerType);
 char* recursos_serializer(recurso_t* self, int16_t *lenght);
 char* listaRecursos_serializer(t_list* self, int16_t *lenght);
@@ -144,8 +118,5 @@ char *personajeDesbloqueado_serializer(personaje_desbloqueado_t *self,
 personaje_desbloqueado_t *personajeDesbloqueado_deserializer(char *data);
 char *listaPersonajeDesbloqueado_serializer(t_list *self, int16_t *length);
 t_list *listaPersonajeDesbloqueado_deserializer(char *data, int16_t length);
-char *planificadorIni_serializer(planificador_ini_t *self, int16_t *length);
-planificador_ini_t *planificadorIni_deserializer(char *serialized);
-void planificadorIni_destroy(planificador_ini_t*self);
 
 #endif /* SOCKETS_H_ */
