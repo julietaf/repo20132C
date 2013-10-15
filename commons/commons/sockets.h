@@ -50,6 +50,11 @@ typedef struct {
 	char idRecurso;
 }__attribute__((__packed__)) personaje_desbloqueado_t;
 
+typedef struct {
+	char simbolo;
+	char *nombreNivel;
+} notificacion_datos_personaje_t;
+
 enum enum_protocolo {
 	//	Handshakes
 	HANDSHAKE_PERSONAJE,
@@ -80,9 +85,8 @@ enum enum_protocolo {
 	VICTIMA_ENEMIGO
 };
 
-enum enum_algoritmoPlanificador{
-	ROUND_ROBIN,
-	SRDF
+enum enum_algoritmoPlanificador {
+	ROUND_ROBIN, SRDF
 };
 
 int sockets_getSocket(void);
@@ -118,5 +122,10 @@ char *personajeDesbloqueado_serializer(personaje_desbloqueado_t *self,
 personaje_desbloqueado_t *personajeDesbloqueado_deserializer(char *data);
 char *listaPersonajeDesbloqueado_serializer(t_list *self, int16_t *length);
 t_list *listaPersonajeDesbloqueado_deserializer(char *data, int16_t length);
+char *notificacionDatosPersonaje_serializer(
+		notificacion_datos_personaje_t *datos, int16_t *length);
+notificacion_datos_personaje_t *notificacionDatosPersonaje_deserializer(
+		char *serialized);
+void notificacionDatosPersonaje_destroy(notificacion_datos_personaje_t *self);
 
 #endif /* SOCKETS_H_ */

@@ -155,8 +155,6 @@ char *ipInfo_serializer(ip_info_t *self, int16_t *length) {
 	return serialized;
 }
 
-
-
 ip_info_t *ipInfo_deserializer(char *serialized) {
 	ip_info_t *self = malloc(sizeof(ip_info_t));
 	int offset = 0, tmp_len = 0;
@@ -444,4 +442,43 @@ t_list *listaPersonajeDesbloqueado_deserializer(char *data, int16_t length) {
 	}
 
 	return self;
+}
+
+char *notificacionDatosPersonaje_serializer(
+		notificacion_datos_personaje_t *datos, int16_t *length) {
+	char *serialized = malloc(sizeof(char) + strlen(datos->nombreNivel) + 1);
+	int offset = 0, tmp_size = 0;
+
+	memcpy(serialized, &datos->simbolo, tmp_size = sizeof(char));
+	offset = tmp_size;
+
+	memcpy(serialized + offset, datos->nombreNivel,
+			tmp_size = strlen(datos->nombreNivel) + 1);
+	offset += tmp_size;
+
+	*length = offset;
+
+	return serialized;
+}
+
+notificacion_datos_personaje_t *notificacionDatosPersonaje_deserializer(
+		char *serialized) {
+	notificacion_datos_personaje_t *datos = malloc(
+			sizeof(notificacion_datos_personaje_t));
+	int offset = 0, tmp_size = 0;
+
+	memcpy(&datos->simbolo, serialized, tmp_size = sizeof(char));
+	offset = tmp_size;
+
+	for (tmp_size = 1; serialized[tmp_size - 1] != '\0'; tmp_size++)
+		;
+	datos->nombreNivel = malloc(tmp_size);
+	memcpy(datos->nombreNivel, serialized + offset, tmp_size);
+
+	return datos;
+}
+
+void notificacionDatosPersonaje_destroy(notificacion_datos_personaje_t *self) {
+	free(self->nombreNivel);
+	free(self);
 }

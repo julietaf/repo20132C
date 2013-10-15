@@ -67,7 +67,19 @@ void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax) {
 }
 
 void delegarAlHiloplanificador(int sockfd) {
+	header_t header;
+	recv(sockfd, &header, sizeof(header), MSG_WAITALL);
 
+	if (header.type == NOTIFICAR_DATOS_PERSONAJE) {
+		char *datos = malloc(header.length);
+		recv(sockfd, datos, header.length, MSG_WAITALL);
+		notificacion_datos_personaje_t *notificacion =
+				notificacionDatosPersonaje_deserializer(datos);
+		datos_personaje_t *datosPersonaje = malloc(sizeof(datos_personaje_t));
+		datosPersonaje->simbolo = notificacion->simbolo;
+		datosPersonaje->sockfd = sockfd;
+		free(datos);
+	}
 }
 
 void crearNuevoHiloPlanificador(int sockfd) {
@@ -78,23 +90,26 @@ void crearNuevoHiloPlanificador(int sockfd) {
 		char *nombreNivel = malloc(header.length);
 		recv(sockfd, nombreNivel, header.length, MSG_WAITALL);
 		datos_planificador_t *datosPlanificador = crearDatosPlanificador(
-				nombreNivel);
+				nombreNivel, sockfd);
 		pthread_create(datosPlanificador->hilo, NULL, (void *) planificador,
 				(void *) datosPlanificador);
 		dictionary_put(planificadores, datosPlanificador->nombre,
 				datosPlanificador);
+		free(nombreNivel);
 	}
 }
 
-datos_planificador_t *crearDatosPlanificador(char *nombre) {
+datos_planificador_t *crearDatosPlanificador(char *nombre, int sockfdNivel) {
 	datos_planificador_t *datosPlanificador = malloc(
 			sizeof(datos_planificador_t));
-	datosPlanificador->nombre = malloc(strlen(nombre));
+	datosPlanificador->nombre = malloc(strlen(nombre) + 1);
 	strcpy(datosPlanificador->nombre, nombre);
+	datosPlanificador->sockfdNivel = sockfdNivel;
 	datosPlanificador->hilo = malloc(sizeof(pthread_t));
 	datosPlanificador->personajesBloqueados = queue_create();
 	datosPlanificador->personajesListos = queue_create();
-	free(nombre);
+	datosPlanificador->mutexColas = malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(datosPlanificador->mutexColas, NULL );
 
 	return datosPlanificador;
 }
