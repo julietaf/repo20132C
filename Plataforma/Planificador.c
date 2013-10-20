@@ -7,32 +7,32 @@
 
 #include "Planificador.h"
 
-void atenderPedido(fd_set *bagEscucha, int sockfdMax,
+void atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 		datos_planificador_t *datos);
 void seleccionarPersonaje(datos_planificador_t *datos);
 
 void planificador(datos_planificador_t *datos) {
 	fd_set bagMaster, bagEscucha;
-	FD_ZERO(bagMaster);
-	FD_ZERO(bagEscucha);
+	FD_ZERO(&bagMaster);
+	FD_ZERO(&bagEscucha);
 	FD_SET(datos->sockfdNivel, &bagMaster);
 	int retval, sockfdMax = datos->sockfdNivel;
 
 	while (1) {
 		bagEscucha = bagMaster;
 
-		retval = select(sockfdMax + 1, &bagEscucha, NULL, NULL, datos->retardo);
+		retval = select(sockfdMax + 1, &bagEscucha, NULL, NULL, NULL );
 
 		if (retval == -1) //Ocurrio un error
 			log_error(logFile, "Error en select");
 		else if (retval) //Hay un pedido de los procesos conectados
-			atenderPedido();
+			atenderPedidoPlanificador(&bagEscucha, sockfdMax, datos);
 		else if (!queue_is_empty(datos->personajesListos)) //Se produjo el timeout
 			seleccionarPersonaje(datos);
 	}
 }
 
-void atenderPedido(fd_set *bagEscucha, int sockfdMax,
+void atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 		datos_planificador_t *datos) {
 	int sockfd;
 
