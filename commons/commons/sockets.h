@@ -68,6 +68,7 @@ enum enum_protocolo {
 	SOLICITAR_RECURSO,
 	FINALIZAR_NIVEL,
 // Hilo Personaje <<<< Planificador
+	NIVEL_INEXISTENTE,
 	TURNO_CONCEDIDO,
 	COORDENADA_CAJA,
 	OTORGAR_RECURSO,

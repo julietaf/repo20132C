@@ -15,7 +15,7 @@ void orquestador(void) {
 	int escuchasfd = sockets_createServer(configuracion->direccionIp,
 			configuracion->puerto, configuracion->backlog);
 	int sockfdMax = escuchasfd;
-	planificadores = dictionary_create();
+	dicPlanificadores = dictionary_create();
 	int sockfd, nbytes;
 	fd_set bagMaster, bagTemp;
 	FD_ZERO(&bagMaster);
@@ -56,17 +56,16 @@ void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax) {
 	switch (header.type) {
 	case HANDSHAKE_PERSONAJE:
 		enviarHandshakeOrquestador(nuevoSockfd);
-		delegarAlHiloplanificador(nuevoSockfd);
+		delegarAlPlanificador(nuevoSockfd);
 		break;
 	case HANDSHAKE_NIVEL:
 		enviarHandshakeOrquestador(nuevoSockfd);
 		crearNuevoHiloPlanificador(nuevoSockfd);
-		agregarSockfd(bagMaster, sockfdMax, nuevoSockfd);
 		break;
 	}
 }
 
-void delegarAlHiloplanificador(int sockfd) {
+void delegarAlPlanificador(int sockfd) {
 	header_t header;
 	recv(sockfd, &header, sizeof(header), MSG_WAITALL);
 
@@ -75,11 +74,29 @@ void delegarAlHiloplanificador(int sockfd) {
 		recv(sockfd, datos, header.length, MSG_WAITALL);
 		notificacion_datos_personaje_t *notificacion =
 				notificacionDatosPersonaje_deserializer(datos);
-		datos_personaje_t *datosPersonaje = malloc(sizeof(datos_personaje_t));
-		datosPersonaje->simbolo = notificacion->simbolo;
-		datosPersonaje->sockfd = sockfd;
+		datos_personaje_t *datosPersonaje = crearDatosPersonaje(
+				notificacion->simbolo, sockfd);
+		agregarPersonajeAListos(datosPersonaje, notificacion->nombreNivel);
 		free(datos);
+		notificacionDatosPersonaje_destroy(notificacion);
 	}
+}
+
+void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
+		char *nombreNivel) {
+	datos_planificador_t *datosPlanificador = dictionary_get(dicPlanificadores,
+			nombreNivel);
+	//datosPlanificador->mutexColas TODO:Implementar mutex
+	queue_push(datosPlanificador->personajesListos, datosPersonaje);
+	//datosPlanificador->mutexColas TODO:Implementar mutex
+}
+
+datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje) {
+	datos_personaje_t *datosPersonaje = malloc(sizeof(datos_personaje_t));
+	datosPersonaje->simbolo = simbolo;
+	datosPersonaje->sockfd = sockfdPersonaje;
+
+	return datosPersonaje;
 }
 
 void crearNuevoHiloPlanificador(int sockfd) {
@@ -93,7 +110,7 @@ void crearNuevoHiloPlanificador(int sockfd) {
 				nombreNivel, sockfd);
 		pthread_create(datosPlanificador->hilo, NULL, (void *) planificador,
 				(void *) datosPlanificador);
-		dictionary_put(planificadores, datosPlanificador->nombre,
+		dictionary_put(dicPlanificadores, datosPlanificador->nombre,
 				datosPlanificador);
 		free(nombreNivel);
 	}
