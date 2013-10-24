@@ -55,6 +55,13 @@ typedef struct {
 	char *nombreNivel;
 } notificacion_datos_personaje_t;
 
+//NO BORRAR!
+typedef struct {
+  int algoritmo;
+  int quantum;
+  int retardo;
+}__attribute__((__packed__)) planificador_ini_t;
+
 enum enum_protocolo {
 	//	Handshakes
 	HANDSHAKE_PERSONAJE,
@@ -127,5 +134,8 @@ char *notificacionDatosPersonaje_serializer(
 notificacion_datos_personaje_t *notificacionDatosPersonaje_deserializer(
 		char *serialized);
 void notificacionDatosPersonaje_destroy(notificacion_datos_personaje_t *self);
+char *planificadorIni_serializer(planificador_ini_t *self, int16_t *length);
+planificador_ini_t *planificadorIni_deserializer(char *serialized);
+void planificadorIni_destroy(planificador_ini_t*self);
 
 #endif /* SOCKETS_H_ */

@@ -11,7 +11,7 @@
 //----------------------------------------------------------------------------------------------
 
 void CrearItem(ITEM_NIVEL** ListaItems, char id, int x, int y, char tipo,
-		int cant, int socket) {
+		int cant, int socket, int idEnemigo) {
 	ITEM_NIVEL * temp;
 	temp = malloc(sizeof(ITEM_NIVEL));
 
@@ -22,6 +22,7 @@ void CrearItem(ITEM_NIVEL** ListaItems, char id, int x, int y, char tipo,
 	temp->quantity = cant; //vidas en el caso del personaje
 	temp->objetosAdquiridos = NULL;
 	temp->socket = socket;
+	temp->idEnemigo = idEnemigo;
 	temp->next = *ListaItems;
 	*ListaItems = temp;
 }
@@ -40,11 +41,15 @@ void CrearAdquirido(ITEM_ADQ** ListaAdq, char id, char request, int cant) {
 
 void CrearPersonaje(ITEM_NIVEL** ListaItems, char id, int x, int y, int vidas,
 		int socket) {
-	CrearItem(ListaItems, id, x, y, PERSONAJE_ITEM_TYPE, vidas, socket);
+	CrearItem(ListaItems, id, x, y, PERSONAJE_ITEM_TYPE, vidas, socket, -1);
 }
 
 void CrearCaja(ITEM_NIVEL** ListaItems, char id, int x, int y, int cant) {
-	CrearItem(ListaItems, id, x, y, RECURSO_ITEM_TYPE, cant, -1);
+	CrearItem(ListaItems, id, x, y, RECURSO_ITEM_TYPE, cant, -1, -1);
+}
+
+void CrearEnemigo(ITEM_NIVEL** ListaItems, char id, int x, int y, int idEnemigo) {
+	CrearItem(ListaItems, id, x, y, ENEMIGO_ITEM_TYPE, -1, -1, idEnemigo);
 }
 
 void BorrarItem(ITEM_NIVEL** ListaItems, char id) {
@@ -96,6 +101,21 @@ void MoverPersonaje(ITEM_NIVEL* ListaItems, char id, int x, int y) {
 	temp = temp->next;
 }
 	if ((temp != NULL )&& (temp->id == id)){
+	temp->posx = x;
+	temp->posy = y;
+}
+
+}
+
+void moverEnemigo(ITEM_NIVEL* ListaItems, int idEnemigo, int x, int y) {
+
+	ITEM_NIVEL * temp;
+	temp = ListaItems;
+
+	while ((temp != NULL )&& (temp->idEnemigo != idEnemigo)){
+	temp = temp->next;
+}
+	if ((temp != NULL )&& (temp->idEnemigo == idEnemigo)){
 	temp->posx = x;
 	temp->posy = y;
 }
@@ -193,7 +213,7 @@ int darRecursoPersonaje(ITEM_NIVEL** ListaP, ITEM_NIVEL** ListaR, char id,
 		if (cantidadItem(*ListaR, objetoId)>0) {//valido que haya recursos disponibles para dar
 			CrearAdquirido(&tempP->objetosAdquiridos,objetoId,0,1);
 			respuesta = 1;
-		} else {// si no hay seteo flag peticion actura (request)
+		} else {		// si no hay seteo flag peticion actura (request)
 			CrearAdquirido(&tempP->objetosAdquiridos,objetoId,1,0);
 			respuesta = 0;
 		}
@@ -285,9 +305,9 @@ t_list* getObjetosAdquiridosSerializable(ITEM_NIVEL* listaP, char idP) {
 	return adquiridos;
 }
 
-void destroyItems(ITEM_NIVEL** ListaItems){
+void destroyItems(ITEM_NIVEL** ListaItems) {
 
-	while(*ListaItems != NULL) {
+	while (*ListaItems != NULL ) {
 		ITEM_NIVEL * temp = *ListaItems;
 		destroyAdquirido(&temp->objetosAdquiridos);
 		*ListaItems = (*ListaItems)->next;
@@ -298,7 +318,7 @@ void destroyItems(ITEM_NIVEL** ListaItems){
 
 void destroyAdquirido(ITEM_ADQ** ListaAdq) {
 
-	while (*ListaAdq != NULL ){
+	while (*ListaAdq != NULL ) {
 		ITEM_ADQ * temp = *ListaAdq;
 		*ListaAdq = (*ListaAdq)->next;
 		free(temp);

@@ -24,6 +24,8 @@ void desplazarEnX( coordenada_t* posicionActual, coordenada_t* posicionObjetivio
 indicacion_t* indicacionMovimientoAlternado(coordenada_t* posicionActual, coordenada_t* posicionObjetivio);
 int coordenadasIguales(coordenada_t* c1, coordenada_t* c2);
 int coordenadasIgualesInt(coordenada_t* c1, int x, int y);
+coordenada_t* coordenadaRandom(coordenada_t* cMaxima);
+void coordenadaRandomEjes(coordenada_t* ret, int xMax, int yMax);
 int randomNumber(int min_num, int max_num);
 void desplazarEnXPositivo(coordenada_t* coordenada);
 void desplazarEnXNegativo(coordenada_t* coordenada);
@@ -31,7 +33,7 @@ void desplazarEnYPositivo(coordenada_t* coordenada);
 void desplazarEnYNegativo(coordenada_t* coordenada);
 t_list* movimientoLRandom(coordenada_t* cActual);
 t_list* movimientoL(coordenada_t* cActual, int orden, int direccion, int sentido);
-coordenada_t* modificarCoordenada(coordenada_t* coordenada, int x, int y);
+void modificarCoordenada(coordenada_t* coordenada, int x, int y);
 void coordenadaEvasion(coordenada_t* obstaculo, coordenada_t* objetivo, coordenada_t* posActual, coordenada_t* cMaxima);
 int esPar(int a);
 

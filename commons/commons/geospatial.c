@@ -142,6 +142,16 @@ coordenada_t* coordenadaRandom(coordenada_t* cMaxima) {
 }
 
 /**
+ * @NAME: coordenadaRandomEjes
+ * @DESC: Retorna una coordenada al azar entre 0,0 y los ejes maximos
+ */
+void coordenadaRandomEjes(coordenada_t* ret, int xMax, int yMax) {
+	int x = randomNumber(0, xMax);
+	int y = randomNumber(0, yMax);
+	modificarCoordenada(ret, x, y);
+}
+
+/**
  * @NAME: movimientoLRandom
  * @DESC: Retorna una lista con los 3 movimientos de una L al azar
  */
@@ -298,6 +308,17 @@ t_list* movimientoL(coordenada_t* cActual, int orden, int direccion,
 	return ret;
 }
 
+/**
+ * @NAME: modificarCoordenada
+ * @DESC: Modifica el valor de una coordenada ya creada (no hace malloc)
+ */
+void modificarCoordenada(coordenada_t* coordenada, int x, int y) {
+	coordenada->ejeX = x;
+	coordenada->ejeY = y;
+
+}
+
+
 //-----------------------------FUNCIONES PRIVADAS---------------------------------------
 
 int randomNumber(int min_num, int max_num) {
@@ -366,13 +387,6 @@ void desplazarEnYPositivo(coordenada_t* coordenada) {
 
 void desplazarEnYNegativo(coordenada_t* coordenada) {
 	coordenada->ejeY--;
-}
-
-coordenada_t* modificarCoordenada(coordenada_t* coordenada, int x, int y) {
-	coordenada->ejeX = x;
-	coordenada->ejeY = y;
-
-	return coordenada;
 }
 
 int esPar(int a) {

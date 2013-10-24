@@ -482,3 +482,44 @@ void notificacionDatosPersonaje_destroy(notificacion_datos_personaje_t *self) {
 	free(self->nombreNivel);
 	free(self);
 }
+
+//-------------------------------------------- Planificador INI ------------------------------------------------------------
+// No borrar, buenas tardes!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+char *planificadorIni_serializer(planificador_ini_t *self, int16_t *length) {
+        char *serialized = malloc(3 * sizeof(int));
+        int offset = 0, tmp_size = 0;
+
+        memcpy(serialized, &self->algoritmo , tmp_size = sizeof(int));
+        offset = tmp_size;
+
+        memcpy(serialized + offset, &self->quantum, tmp_size = sizeof(int));
+        offset += tmp_size;
+
+        memcpy(serialized + offset, &self->retardo, tmp_size = sizeof(int));
+        offset += tmp_size;
+
+        *length = offset;
+
+        return serialized;
+}
+
+planificador_ini_t *planificadorIni_deserializer(char *serialized) {
+        planificador_ini_t *self = malloc(sizeof(coordenada_t));
+        int offset = 0, tmp_size = 0;
+
+        memcpy(&self->algoritmo, serialized, tmp_size = sizeof(int));
+        offset = tmp_size;
+
+        memcpy(&self->quantum, serialized + offset, tmp_size = sizeof(int));
+        offset += tmp_size;
+
+        memcpy(&self->retardo, serialized + offset, tmp_size = sizeof(int));
+        offset += tmp_size;
+
+        return self;
+}
+
+void planificadorIni_destroy(planificador_ini_t*self) {
+        free(self);
+}

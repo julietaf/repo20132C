@@ -1,5 +1,6 @@
 #define PERSONAJE_ITEM_TYPE 0
 #define RECURSO_ITEM_TYPE 1
+#define ENEMIGO_ITEM_TYPE 2
 
 #ifndef NIVEL_GHI_H_
 #define NIVEL_GHI_H_
@@ -12,6 +13,7 @@ struct elementos {
 	int quantity;
 	struct adquiridos *objetosAdquiridos; // Estos campos solo son validos para item_type 0
 	int socket;
+	int idEnemigo;
 	struct elementos *next;
 };
 

@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 #include "commons/deadlock_detection.h"
 #include "commons/collections/list.h"
 #include "commons/tad_items.h"
@@ -19,6 +20,7 @@
 #include "commons/log.h"
 #include "commons/string.h"
 #include "commons/sockets.h"
+#include "commons/geospatial.h"
 
 //----------------------------------------CONSTANTES--------------------------------------------------
 #define CONFIG_PATH "./nivelconfig.txt"
@@ -53,8 +55,7 @@ ITEM_NIVEL* listaRecursos = NULL;
 ITEM_NIVEL* listaPersonajes = NULL;
 ITEM_NIVEL* listaEnemigos = NULL;
 NIVEL_CONF *configObj;
-
-
+planificador_ini_t* configPlanificador;
 
 //--------------------------------------------FIRMAS--------------------------------------------------
 NIVEL_CONF* inicializarCongiuracionNivel();
@@ -74,4 +75,17 @@ void tratarNuevoPersonaje(char* data);
 void tratarMovimiento(char* data);
 void tratarSolicitudRecurso(char* data);
 void tratarFinalizacionPersonaje(char* data);
+void notificarMuertePersonaje(char id);
+void crearHiloEnemigo ();
+//-----------------------Hilo DeadLock-------------------------------
+void deadLock();
+//-----------------------Hilo Enemigo--------------------------------
+void enemigo(int idEnemigo);
+void agregarEnemigo(int idEnemigo, coordenada_t* posicion);
+void entrarAlNivel(coordenada_t* posicion );
+void cazarPersonajes(t_list* bufferMovimiento, coordenada_t* posicion);
+int hayPersonajes();
+void perseguirPersonaje(coordenada_t* posicion);
+void movimientoDeEspera(t_list* bufferMovimiento);
+int validarPosicionEnemigo(coordenada_t* posicion);
 #endif /* NIVEL_H_ */
