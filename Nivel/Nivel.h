@@ -55,7 +55,7 @@ ITEM_NIVEL* listaRecursos = NULL;
 ITEM_NIVEL* listaPersonajes = NULL;
 ITEM_NIVEL* listaEnemigos = NULL;
 NIVEL_CONF *configObj;
-planificador_ini_t* configPlanificador;
+informacion_planificacion_t* configPlanificador;
 
 //--------------------------------------------FIRMAS--------------------------------------------------
 NIVEL_CONF* inicializarCongiuracionNivel();
