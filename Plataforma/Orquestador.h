@@ -32,6 +32,8 @@ typedef struct {
 	pthread_t *hilo;
 	char *nombre;
 	int sockfdNivel;
+	int retardo;
+	int criterioPlanificacion;
 	t_queue *personajesListos;
 	t_queue *personajesBloqueados;
 	pthread_mutex_t *mutexColas;
@@ -44,7 +46,7 @@ typedef struct {
 
 configuracion_plataforma_t *configuracion;
 t_log *logFile;
-t_dictionary *planificadores;
+t_dictionary *dicPlanificadores;
 
 void orquestador(void);
 void agregarSockfd(fd_set *bagMaster, int *sockfdMax, int sockfd);
@@ -55,6 +57,9 @@ int atenderPedido(int sockfd);
 int enviarHandshakeOrquestador(int sockfd);
 void crearNuevoHiloPlanificador(int sockfd);
 datos_planificador_t *crearDatosPlanificador(char *nombre, int sockfdNivel);
-void delegarAlHiloplanificador(int sockfd);
+void delegarAlPlanificador(int sockfd);
+datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje);
+void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
+		char *nombreNivel);
 
 #endif /* ORQUESTADOR_H_ */
