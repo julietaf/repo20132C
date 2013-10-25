@@ -33,7 +33,8 @@ typedef struct {
 	char *nombre;
 	int sockfdNivel;
 	int retardo;
-	int criterioPlanificacion;
+	int algoritmo;
+	int quatum;
 	t_queue *personajesListos;
 	t_queue *personajesBloqueados;
 	pthread_mutex_t *mutexColas;
@@ -56,7 +57,8 @@ configuracion_plataforma_t *getConfiguracion(void);
 int atenderPedido(int sockfd);
 int enviarHandshakeOrquestador(int sockfd);
 void crearNuevoHiloPlanificador(int sockfd);
-datos_planificador_t *crearDatosPlanificador(char *nombre, int sockfdNivel);
+datos_planificador_t *crearDatosPlanificador(
+		informacion_planificacion_t *infoPlan, int sockfdNivel);
 void delegarAlPlanificador(int sockfd);
 datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje);
 void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,

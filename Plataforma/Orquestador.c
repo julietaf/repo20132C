@@ -104,24 +104,31 @@ void crearNuevoHiloPlanificador(int sockfd) {
 	recv(sockfd, &header, sizeof(header_t), MSG_WAITALL);
 
 	if (header.type == NOTIFICAR_DATOS_NIVEL) {
-		char *nombreNivel = malloc(header.length);
-		recv(sockfd, nombreNivel, header.length, MSG_WAITALL);
+		char *dataNivel = malloc(header.length);
+		recv(sockfd, dataNivel, header.length, MSG_WAITALL);
+		informacion_planificacion_t *infoPlanificacion =
+				informacionPlanificacion_deserializer(dataNivel);
+		free(dataNivel);
 		datos_planificador_t *datosPlanificador = crearDatosPlanificador(
-				nombreNivel, sockfd);
+				infoPlanificacion, sockfd);
+		informacionPlanificacion_destroy(infoPlanificacion);
 		pthread_create(datosPlanificador->hilo, NULL, (void *) planificador,
 				(void *) datosPlanificador);
 		dictionary_put(dicPlanificadores, datosPlanificador->nombre,
 				datosPlanificador);
-		free(nombreNivel);
 	}
 }
 
-datos_planificador_t *crearDatosPlanificador(char *nombre, int sockfdNivel) {
+datos_planificador_t *crearDatosPlanificador(
+		informacion_planificacion_t *infoPlan, int sockfdNivel) {
 	datos_planificador_t *datosPlanificador = malloc(
 			sizeof(datos_planificador_t));
-	datosPlanificador->nombre = malloc(strlen(nombre) + 1);
-	strcpy(datosPlanificador->nombre, nombre);
+	datosPlanificador->nombre = malloc(strlen(infoPlan->nombreNivel) + 1);
+	strcpy(datosPlanificador->nombre, infoPlan->nombreNivel);
 	datosPlanificador->sockfdNivel = sockfdNivel;
+	datosPlanificador->algoritmo = infoPlan->algoritmo;
+	datosPlanificador->quatum = infoPlan->quantum;
+	datosPlanificador->retardo = infoPlan->retardo;
 	datosPlanificador->hilo = malloc(sizeof(pthread_t));
 	datosPlanificador->personajesBloqueados = queue_create();
 	datosPlanificador->personajesListos = queue_create();
