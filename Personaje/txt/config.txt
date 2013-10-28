@@ -1,0 +1,8 @@
+nombre=Mario
+simbolo=@
+planDeNiveles=[Nivel3,Nivel4,Nivel1]
+obj[Nivel1]=[F,H,F,M]
+obj[Nivel3]=[C,J,C]
+obj[Nivel4]=[P,Q,M]
+vidas=5
+orquestador=127.0.0.1:5000
