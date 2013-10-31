@@ -155,14 +155,14 @@ void coordenadaRandomEjes(coordenada_t* ret, int xMax, int yMax) {
  * @NAME: movimientoLRandom
  * @DESC: Retorna una lista con los 3 movimientos de una L al azar
  */
-t_list* movimientoLRandom(coordenada_t* cActual) {
+t_list* movimientoLRandom(coordenada_t* cActual, t_list* buffer) {
 	int orden, direccion, sentido;
 
 	orden = randomNumber(0, 1);
 	direccion = randomNumber(0, 3);
 	sentido = randomNumber(0, 1);
 
-	return movimientoL(cActual, orden, direccion, sentido);
+	return movimientoL(cActual, buffer, orden, direccion, sentido);
 }
 
 /**
@@ -173,11 +173,11 @@ t_list* movimientoLRandom(coordenada_t* cActual) {
  * 		   Orden 1 = primero 2 despues 1, 0 viceversa
  * 		   Sentido = 1 dobla en positivo, 0 en negativo
  */
-t_list* movimientoL(coordenada_t* cActual, int orden, int direccion,
+t_list* movimientoL(coordenada_t* cActual,t_list* buffer, int orden, int direccion,
 		int sentido) {
 
 	coordenada_t* c1, *c2, *c3;
-	t_list* ret = list_create();
+//	t_list* ret = list_create();
 
 	c1 = malloc(sizeof(coordenada_t));
 	c2 = malloc(sizeof(coordenada_t));
@@ -185,127 +185,91 @@ t_list* movimientoL(coordenada_t* cActual, int orden, int direccion,
 
 	switch (direccion) {
 	case 0:
-//		c1 = desplazarEnYPositivo(cActual);
 		modificarCoordenada(c1, cActual->ejeX, cActual->ejeY+1);
 		if (sentido) { //Positivo
 			if (orden) { // 2 1
-//				c2 = desplazarEnYPositivo(c1);
-//				c3 = desplazarEnXPositivo(c2);
 				modificarCoordenada(c2, c1->ejeX, c1->ejeY + 1);
 				modificarCoordenada(c3, c2->ejeX +1, c2->ejeY);
 			} else { // 1 2
-//				c2 = desplazarEnXPositivo(c1);
-//				c3 = desplazarEnXPositivo(c2);
 				modificarCoordenada(c2, c1->ejeX +1, c1->ejeY);
 				modificarCoordenada(c3, c2->ejeX +1, c2->ejeY);
 			}
 		} else {
 			if (orden) { // 2 1
-//				c2 = desplazarEnYPositivo(c1);
-//				c3 = desplazarEnXNegativo(c2);
 				modificarCoordenada(c2, c1->ejeX, c1->ejeY + 1);
 				modificarCoordenada(c3, c2->ejeX -1, c2->ejeY);
 			} else { // 1 2
-//				c2 = desplazarEnXNegativo(c1);
-//				c3 = desplazarEnXNegativo(c2);
 				modificarCoordenada(c2, c1->ejeX -1, c1->ejeY);
 				modificarCoordenada(c3, c2->ejeX -1, c2->ejeY);
 			}
 		}
 		break;
 	case 1:
-//		c1 = desplazarEnXPositivo(cActual);
 		modificarCoordenada(c1, cActual->ejeX+1, cActual->ejeY);
 		if (sentido) { //Positivo
 			if (orden) { // 2 1
-//				c2 = desplazarEnXPositivo(c1);
-//				c3 = desplazarEnYPositivo(c2);
 				modificarCoordenada(c2, c1->ejeX +1, c1->ejeY);
 				modificarCoordenada(c3, c2->ejeX, c2->ejeY +1);
 			} else { // 1 2
-//				c2 = desplazarEnYPositivo(c1);
-//				c3 = desplazarEnYPositivo(c2);
 				modificarCoordenada(c2, c1->ejeX, c1->ejeY + 1);
 				modificarCoordenada(c3, c2->ejeX, c2->ejeY + 1);
 			}
 		} else {
 			if (orden) { // 2 1
-//				c2 = desplazarEnXPositivo(c1);
-//				c3 = desplazarEnYNegativo(c2);
 				modificarCoordenada(c2, c1->ejeX + 1, c1->ejeY);
 				modificarCoordenada(c3, c2->ejeX, c2->ejeY -1);
 			} else { // 1 2
-//				c2 = desplazarEnYNegativo(c1);
-//				c3 = desplazarEnYNegativo(c2);
 				modificarCoordenada(c2, c1->ejeX, c1->ejeY - 1);
 				modificarCoordenada(c3, c2->ejeX, c2->ejeY - 1);
 			}
 		}
 		break;
 	case 2:
-//		c1 = desplazarEnYNegativo(cActual);
 		modificarCoordenada(c1, cActual->ejeX, cActual->ejeY - 1);
 		if (sentido) { //Positivo
 			if (orden) { // 2 1
-//				c2 = desplazarEnYNegativo(c1);
-//				c3 = desplazarEnXPositivo(c2);
 				modificarCoordenada(c2, c1->ejeX, c1->ejeY - 1);
 				modificarCoordenada(c3, c2->ejeX + 1, c2->ejeY );
 			} else { // 1 2
-//				c2 = desplazarEnXPositivo(c1);
-//				c3 = desplazarEnXPositivo(c2);
 				modificarCoordenada(c2, c1->ejeX +1, c1->ejeY);
 				modificarCoordenada(c3, c2->ejeX +1, c2->ejeY);
 			}
 		} else {
 			if (orden) { // 2 1
-//				c2 = desplazarEnYNegativo(c1);
-//				c3 = desplazarEnXNegativo(c2);
 				modificarCoordenada(c2, c1->ejeX, c1->ejeY - 1);
 				modificarCoordenada(c3, c2->ejeX -1, c2->ejeY);
 			} else { // 1 2
-//				c2 = desplazarEnXNegativo(c1);
-//				c3 = desplazarEnXNegativo(c2);
 				modificarCoordenada(c2, c1->ejeX -1, c1->ejeY);
 				modificarCoordenada(c3, c2->ejeX -1, c2->ejeY);
 			}
 		}
 		break;
 	case 3:
-//		c1 = desplazarEnXNegativo(cActual);
 		modificarCoordenada(c1, cActual->ejeX -1 , cActual->ejeY);
 		if (sentido) { //Positivo
 			if (orden) { // 2 1
-//				c2 = desplazarEnXNegativo(c1);
-//				c3 = desplazarEnYPositivo(c2);
 				modificarCoordenada(c2, c1->ejeX -1, c1->ejeY);
 				modificarCoordenada(c3, c2->ejeX , c2->ejeY+1);
 			} else { // 1 2
-//				c2 = desplazarEnYPositivo(c1);
-//				c3 = desplazarEnYPositivo(c2);
 				modificarCoordenada(c2, c1->ejeX, c1->ejeY +1);
 				modificarCoordenada(c3, c2->ejeX, c2->ejeY +1);
 			}
 		} else {
 			if (orden) { // 2 1
-//				c2 = desplazarEnXNegativo(c1);
-//				c3 = desplazarEnYNegativo(c2);
 				modificarCoordenada(c2, c1->ejeX -1, c1->ejeY);
 				modificarCoordenada(c3, c2->ejeX , c2->ejeY -1);
 			} else { // 1 2
-//				c2 = desplazarEnYNegativo(c1);
-//				c3 = desplazarEnYNegativo(c2);
 				modificarCoordenada(c2, c1->ejeX, c1->ejeY  -1);
 				modificarCoordenada(c3, c2->ejeX, c2->ejeY  -1);
 			}
 		}
 		break;
 	}
-	list_add_in_index(ret, 0, c1);
-	list_add_in_index(ret, 1, c2);
-	list_add_in_index(ret, 2, c3);
+	list_add_in_index(buffer, 0, c1);
+	list_add_in_index(buffer, 1, c2);
+	list_add_in_index(buffer, 2, c3);
 
-	return ret;
+//	return ret;
 }
 
 /**
@@ -330,7 +294,7 @@ int randomNumber(int min_num, int max_num) {
 		low_num = max_num + 1;
 		hi_num = min_num;
 	}
-	srand(time(NULL ));
+	srand(time(NULL));
 	result = (rand() % (hi_num - low_num)) + low_num;
 	return result;
 }
