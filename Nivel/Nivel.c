@@ -17,12 +17,13 @@ int main(void) {
 	inicializarConfiguracionCajas();
 //	nivel_gui_dibujar(listaRecursos);
 	inicializarSockEscucha();
-	inicializarConexionPlataforma();
+//	inicializarConexionPlataforma();
 	log_info(logFile, "Esperando conexiones en ip: %s port: %s", configObj->localhostaddr, configObj->localhostport);
-	crearHiloEnemigo();
+//	crearHiloEnemigo();
 	pthread_t hEnemigo;
 	pthread_create(&hEnemigo, NULL, (void*) enemigo, NULL );
-
+	//TODO: MUchas muy importantes cosa//
+	pthread_join(hEnemigo, (void **)NULL);
 	return EXIT_SUCCESS;
 }
 
@@ -61,8 +62,8 @@ NIVEL_CONF* inicializarCongiuracionNivel() {
 	if (config_has_property(conF, "Enemigos")) {
 		configObj->enemigos = config_get_int_value(conF, "Enemigos");
 	}
-	if (config_has_property(conF, "SleepEnemigos")) {
-		configObj->sleepEnemigos = config_get_int_value(conF, "SleepEnemigos");
+	if (config_has_property(conF, "Sleep_Enemigos")) {
+		configObj->sleepEnemigos = config_get_int_value(conF, "Sleep_Enemigos");
 	}
 	config_destroy(conF);
 	return configObj;
@@ -78,6 +79,7 @@ void inicializarInterfazGrafica() {
 	if (nivel_gui_get_area_nivel(&fil, &col) == -1) {
 		log_error(logFile, "No se pudo inicializar el area del nivel");
 	}
+	log_info(logFile, "Interfaz grafica inicializada, filas: %d, columnas: %d", fil, col);
 
 }
 
@@ -151,9 +153,9 @@ void inicializarSockEscucha() {
 
 void inicializarConexionPlataforma() {
 
-	orquestadorSockfd = conectarOrquestador();
+	orquestadorSockfd = conectarOrquestador();//Cambiar por plataforma
 	hacerHandshake(orquestadorSockfd);
-	enviarDatosConexion();
+	enviarDatosConexion();//TODO: enviar datos del algoritmo y nombre a Orquestador
 	recibirDatosPlanificador();
 
 }
@@ -320,12 +322,53 @@ void notificarMuertePersonaje(char id){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
+void dibujar() {
+        log_info(logFile, "Dibujando...");
+        ITEM_NIVEL* tempI = NULL;
+        ITEM_NIVEL* tempR = NULL;
+        ITEM_NIVEL* tempP = NULL;
+        ITEM_NIVEL* tempE = NULL;
+
+        tempR = listaRecursos;
+        tempP = listaPersonajes;
+        tempE = listaEnemigos;
+
+        while (tempR != NULL ) {
+                CrearCaja(&tempI, tempR->id, tempR->posx, tempR->posy, tempR->quantity);
+                tempR = tempR->next;
+        }
+
+        while (tempP != NULL ) {
+                CrearPersonaje(&tempI, tempP->id, tempP->posx, tempP->posy, 1,
+                                tempP->socket);
+                tempP = tempP->next;
+        }
+
+        while (tempE != NULL ) {
+        	CrearEnemigo(&tempI, tempE->id, tempE->posx, tempE->posy, tempE->idEnemigo);
+        	log_debug(logFile, "Enemigo: %d, dibujado en posicion (%d, %d) ", tempE->idEnemigo, tempE->posx, tempE->posy);
+        	tempE = tempE->next;
+
+        }
+
+        if (nivel_gui_dibujar(tempI) == -1) {
+                log_info(logFile, "No se puedo dibujar el personaje");
+                //      EXIT_FAILURE;
+        } else {
+                log_info(logFile, "Dibujado...");
+        }
+        //TODO: Destroy
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
 void crearHiloEnemigo (){
 
-	int i;
+	int i = 0;
 	for (i = 0; i < configObj->enemigos; i++) {
-		pthread_t hdeadlock;
-		pthread_create(&hdeadlock, NULL, (void*) deadLock,  (void*)i );
+		pthread_t hEnemigo;
+		pthread_create(&hEnemigo, NULL, (void*) enemigo,  (void*)i );
+		sleep(1);
 	}
 }
 
@@ -334,12 +377,15 @@ void crearHiloEnemigo (){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void enemigo (int idEnemigo){
-	t_list* bufferMovimiento = NULL;
+//	t_list* bufferMovimiento = NULL;
+	t_list* bufferMovimiento = list_create();
 	coordenada_t* posicion = malloc(sizeof(coordenada_t));
 	agregarEnemigo(idEnemigo, posicion);
-	entrarAlNivel(posicion);
 	while (1){
 		cazarPersonajes(bufferMovimiento, posicion);
+		moverEnemigo(listaEnemigos, idEnemigo, posicion->ejeX, posicion->ejeY );
+//		dibujar();
+		log_info(logFile, "Enemigo: %d,se movio a posicion (%d, %d) ", idEnemigo, posicion->ejeX, posicion->ejeY);
 	}
 
 }
@@ -348,48 +394,44 @@ void enemigo (int idEnemigo){
 
 void agregarEnemigo(int idEnemigo, coordenada_t* posicion){
 	do {
-		coordenadaRandomEjes(posicion, fil, col);
-	} while (!validarPosicionEnemigo(posicion));
+		coordenadaRandomEjes(posicion, col, fil);
+	} while (!validarPosicionEnemigo(posicion) && !coordenadasIgualesInt(posicion, 0, 0));
 
 	CrearEnemigo(&listaEnemigos, '*', posicion->ejeX, posicion->ejeY, idEnemigo);
-}
-
-//-----------------------------------------------------------------------------------------------------------------------------
-
-void entrarAlNivel(coordenada_t* posicion ){
-
-
-
+	log_info(logFile, "Enemigo: %d, creado en posicion (%d, %d) ", idEnemigo, posicion->ejeX, posicion->ejeY);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void cazarPersonajes( t_list* bufferMovimiento, coordenada_t* posicion){
-	sleep(configObj->sleepEnemigos);
+//	sleep(configObj->sleepEnemigos);
+	sleep(1);
 	if(hayPersonajes()){
 		perseguirPersonaje(posicion);
 	}else{
-		movimientoDeEspera(bufferMovimiento);
+
+		movimientoDeEspera(bufferMovimiento, posicion);
 	}
+
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
 int hayPersonajes(){
-	int ret = listaEnemigos != NULL ? 1 : 0;
+	int ret = listaPersonajes != NULL ? 1 : 0;
 	return ret;
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void perseguirPersonaje(coordenada_t* posicion){
-	ITEM_NIVEL * temp = listaRecursos;
+	ITEM_NIVEL * temp = listaPersonajes;
 	int distanciaMinima = 1000;
 	int xActual , yActual;
 	coordenada_t* cObjetivo = malloc(sizeof(coordenada_t));
 	coordenada_t* obstaculo = malloc(sizeof(coordenada_t));
 	coordenada_t* limites = malloc(sizeof(coordenada_t));
-	modificarCoordenada(limites, fil, col);
+	modificarCoordenada(limites, col, fil);
 
 	//Busco el personaje mas cercano
 	while(temp != NULL){
@@ -407,6 +449,7 @@ void perseguirPersonaje(coordenada_t* posicion){
 	xActual = posicion->ejeX;
 	yActual = posicion->ejeY;
 
+	//Me muevo hacia el personaje mas cercano
 	coordenadaMovimientoAlternado(posicion, cObjetivo);
 	if (!validarPosicionEnemigo(posicion)) {
 
@@ -415,6 +458,7 @@ void perseguirPersonaje(coordenada_t* posicion){
 		coordenadaEvasion(obstaculo, cObjetivo, posicion, limites);
 	}
 
+	//Si toco un personaje lo mato
 	temp = listaPersonajes;
 	while (temp != NULL){
 		if (coordenadasIgualesInt(posicion, temp->posx, temp->posy)) {
@@ -422,17 +466,45 @@ void perseguirPersonaje(coordenada_t* posicion){
 		}
 	}
 
+
+	//Frees
 	free(limites);
-
+	free(obstaculo);
+	free(cObjetivo);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void movimientoDeEspera(t_list* bufferMovimiento){
+void movimientoDeEspera(t_list* bufferMovimiento, coordenada_t* posicion){
 
+	if (list_is_empty(bufferMovimiento)){
+		do{
+			//TODO: aloca memoria
+		movimientoLRandom(posicion, bufferMovimiento);
+		}while(!validarPosicionesEnemigo(bufferMovimiento));
+	}
+
+	coordenada_t* temp = list_remove(bufferMovimiento, 0);
+	modificarCoordenada(posicion, temp->ejeX, temp->ejeY);
+	free(temp);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
+
+int validarPosicionesEnemigo(t_list* bufferMovimiento){
+	int i, r;
+	for (i = 0; i < list_size(bufferMovimiento); i++) {
+		coordenada_t* coordenadaTemp ;//= malloc(sizeof(coordenada_t));
+		coordenadaTemp = list_get(bufferMovimiento, i);
+		r = validarPosicionEnemigo(coordenadaTemp);
+//		free (coordenadaTemp);
+		if (!r){
+			return 0;
+		}
+	}
+
+	return 1;
+}
 
 int validarPosicionEnemigo(coordenada_t* posicion){
 	ITEM_NIVEL * temp = listaRecursos;

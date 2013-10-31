@@ -51,6 +51,7 @@ t_log *logFile;
 int orquestadorSockfd;
 int sockEscucha;
 int fil = 100, col = 100;
+//int fil, col;
 ITEM_NIVEL* listaRecursos = NULL;
 ITEM_NIVEL* listaPersonajes = NULL;
 ITEM_NIVEL* listaEnemigos = NULL;
@@ -77,6 +78,7 @@ void tratarSolicitudRecurso(char* data);
 void tratarFinalizacionPersonaje(char* data);
 void notificarMuertePersonaje(char id);
 void crearHiloEnemigo ();
+void dibujar();
 //-----------------------Hilo DeadLock-------------------------------
 void deadLock();
 //-----------------------Hilo Enemigo--------------------------------
@@ -86,6 +88,7 @@ void entrarAlNivel(coordenada_t* posicion );
 void cazarPersonajes(t_list* bufferMovimiento, coordenada_t* posicion);
 int hayPersonajes();
 void perseguirPersonaje(coordenada_t* posicion);
-void movimientoDeEspera(t_list* bufferMovimiento);
+void movimientoDeEspera(t_list* bufferMovimiento, coordenada_t* posicion);
+int validarPosicionesEnemigo(t_list* bufferMovimiento);
 int validarPosicionEnemigo(coordenada_t* posicion);
 #endif /* NIVEL_H_ */
