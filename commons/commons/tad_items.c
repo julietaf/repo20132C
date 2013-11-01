@@ -49,7 +49,7 @@ void CrearCaja(ITEM_NIVEL** ListaItems, char id, int x, int y, int cant) {
 }
 
 void CrearEnemigo(ITEM_NIVEL** ListaItems, char id, int x, int y, int idEnemigo) {
-	CrearItem(ListaItems, id, x, y, ENEMIGO_ITEM_TYPE, -1, -1, idEnemigo);
+	CrearItem(ListaItems, id, x, y, PERSONAJE_ITEM_TYPE, -1, -1, idEnemigo);
 }
 
 void BorrarItem(ITEM_NIVEL** ListaItems, char id) {
