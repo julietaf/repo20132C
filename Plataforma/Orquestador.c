@@ -88,6 +88,7 @@ void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 			nombreNivel);
 	//datosPlanificador->mutexColas TODO:Implementar mutex
 	queue_push(datosPlanificador->personajesListos, datosPersonaje);
+	FD_SET(datosPersonaje->sockfd, datosPlanificador->bagMaster);
 	//datosPlanificador->mutexColas TODO:Implementar mutex
 }
 
@@ -95,15 +96,17 @@ datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje) {
 	datos_personaje_t *datosPersonaje = malloc(sizeof(datos_personaje_t));
 	datosPersonaje->simbolo = simbolo;
 	datosPersonaje->sockfd = sockfdPersonaje;
+	datosPersonaje->objetivo = '\0';
 
 	return datosPersonaje;
 }
+NOTIFICAR_DATOS_PLANIFICADOR
 
 void crearNuevoHiloPlanificador(int sockfd) {
 	header_t header;
 	recv(sockfd, &header, sizeof(header_t), MSG_WAITALL);
 
-	if (header.type == NOTIFICAR_DATOS_NIVEL) {
+	if (header.type == NOTIFICAR_ALGORITMO_PLANIFICACION) {
 		char *dataNivel = malloc(header.length);
 		recv(sockfd, dataNivel, header.length, MSG_WAITALL);
 		informacion_planificacion_t *infoPlanificacion =
@@ -133,6 +136,8 @@ datos_planificador_t *crearDatosPlanificador(
 	datosPlanificador->personajesBloqueados = queue_create();
 	datosPlanificador->personajesListos = queue_create();
 	datosPlanificador->mutexColas = malloc(sizeof(pthread_mutex_t));
+	datosPlanificador->bagMaster = malloc(sizeof(fd_set));
+	FD_ZERO(datosPlanificador->bagMaster);
 	pthread_mutex_init(datosPlanificador->mutexColas, NULL );
 
 	return datosPlanificador;

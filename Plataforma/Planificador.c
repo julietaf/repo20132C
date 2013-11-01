@@ -15,16 +15,22 @@ void seleccionarPorSRDF(datos_planificador_t *datos);
 void enviarTurnoConcedido(datos_personaje_t *personaje);
 void notificarNivel(datos_planificador_t *planificador, int type,
 		int16_t length, char *data);
+datos_personaje_t *buscarPersonajePorSockfd(t_queue *cola, int sockfd);
+void atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje);
+void atenderPedidoNivel(datos_planificador_t *datos);
+void gestionarUbicacionCaja(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje, char *objetivo);
+void reenviarUbicacionCaja(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje, header_t *header, char *data);
 
 void planificador(datos_planificador_t *datos) {
-	fd_set bagMaster, bagEscucha;
+	fd_set bagEscucha;
 	FD_ZERO(&bagMaster);
-	FD_ZERO(&bagEscucha);
-	FD_SET(datos->sockfdNivel, &bagMaster);
+	FD_SET(datos->sockfdNivel, datos->bagMaster);
 	int retval, sockfdMax = datos->sockfdNivel;
 
 	while (1) {
-		bagEscucha = bagMaster;
+		bagEscucha = datos->bagMaster;
 
 		retval = select(sockfdMax + 1, &bagEscucha, NULL, NULL, NULL );
 
@@ -43,7 +49,9 @@ void atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 
 	for (sockfd = 0; sockfd <= sockfdMax; sockfd++) {
 		if (sockfd == datos->sockfdNivel) {
-
+			atenderPedidoNivel(datos, sockfd);
+		} else {
+			atenderPedidoPersonaje(datos, sockfd);
 		}
 	}
 }
@@ -73,7 +81,8 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 
 		switch (header.type) {
 		case UBICACION_CAJA:
-			sockets_send(datosPlan->sockfdNivel, &header, data);
+			reenviarUbicacionCaja(datosPlan, personaje, &header, data);
+			gestionarUbicacionCaja(datosPlan, personaje, data);
 			break;
 		case NOTIFICACION_MOVIMIENTO:
 			quantumPersonaje--;
@@ -105,4 +114,57 @@ void enviarTurnoConcedido(datos_personaje_t *personaje) {
 void notificarNivel(datos_planificador_t *planificador, int type,
 		int16_t length, char *data) {
 
+}
+
+datos_personaje_t *buscarPersonajePorSockfd(t_queue *cola, int sockfd) {
+	int _is_personaje(datos_personaje_t *datos) {
+		return datos->sockfd == sockfd;
+	}
+
+	return list_find(cola->elements, (void *) _is_personaje);
+}
+
+void atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje) {
+	header_t header;
+
+	recv(sockfdPersonaje, &header, sizeof(header), MSG_WAITALL);
+
+	switch (header.type) {
+	case FINALIZAR_NIVEL:
+		//TODO:Realizar tareas de finalización.
+		break;
+	}
+}
+
+void atenderPedidoNivel(datos_planificador_t *datos) {
+	header_t header;
+
+	recv(datos->sockfdNivel, &header, sizeof(header), MSG_WAITALL);
+
+	switch (header.type) {
+	case PERSONAJE_FINALIZO:
+		//TODO:Realizar tareas de finalización.
+		break;
+	}
+}
+
+void reenviarUbicacionCaja(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje, header_t *header, char *data) {
+	memcpy(&personaje->objetivo, data, sizeof(char));
+	sockets_send(datosPlan->sockfdNivel, header, data);
+}
+
+void gestionarUbicacionCaja(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje, char *objetivo) {
+	header_t header;
+
+	recv(datosPlan->sockfdNivel, &header, sizeof(header), MSG_WAITALL);
+
+	if (header.type == UBICACION_CAJA) {
+		char *respuesta = malloc(header.length);
+		recv(datosPlan->sockfdNivel, respuesta, header.length, MSG_WAITALL);
+		personaje->coordObjetivo = coordenadas_deserializer(respuesta);
+		sockets_send(personaje->sockfd, &header, respuesta);
+		free(respuesta);
+	}
 }

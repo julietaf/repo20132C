@@ -35,6 +35,7 @@ typedef struct {
 	int retardo;
 	int algoritmo;
 	int quatum;
+	fd_set *bagMaster;
 	t_queue *personajesListos;
 	t_queue *personajesBloqueados;
 	pthread_mutex_t *mutexColas;
@@ -43,6 +44,8 @@ typedef struct {
 typedef struct {
 	char simbolo;
 	int sockfd;
+	char objetivo;
+	coordenada_t *coordObjetivo;
 } datos_personaje_t;
 
 configuracion_plataforma_t *configuracion;
