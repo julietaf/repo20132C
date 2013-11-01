@@ -100,7 +100,6 @@ datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje) {
 
 	return datosPersonaje;
 }
-NOTIFICAR_DATOS_PLANIFICADOR
 
 void crearNuevoHiloPlanificador(int sockfd) {
 	header_t header;

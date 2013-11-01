@@ -25,12 +25,12 @@ void reenviarUbicacionCaja(datos_planificador_t *datosPlan,
 
 void planificador(datos_planificador_t *datos) {
 	fd_set bagEscucha;
-	FD_ZERO(&bagMaster);
+	FD_ZERO(&bagEscucha);
 	FD_SET(datos->sockfdNivel, datos->bagMaster);
 	int retval, sockfdMax = datos->sockfdNivel;
 
 	while (1) {
-		bagEscucha = datos->bagMaster;
+		bagEscucha = *datos->bagMaster;
 
 		retval = select(sockfdMax + 1, &bagEscucha, NULL, NULL, NULL );
 
@@ -49,7 +49,7 @@ void atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 
 	for (sockfd = 0; sockfd <= sockfdMax; sockfd++) {
 		if (sockfd == datos->sockfdNivel) {
-			atenderPedidoNivel(datos, sockfd);
+			atenderPedidoNivel(datos);
 		} else {
 			atenderPedidoPersonaje(datos, sockfd);
 		}
