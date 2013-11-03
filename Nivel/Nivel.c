@@ -372,10 +372,12 @@ void tratarMovimiento(char* data){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void tratarSolicitudRecurso(char* data){
-	//TODO:
+
 	personaje_recurso_t* personaje;
-	personaje = personajeRecurso_deserializer(data);
 	int respuesta;
+
+	personaje = personajeRecurso_deserializer(data);
+
 	if (personajeEnCaja(personaje->idPersonaje, personaje->idRecurso)) {
 		respuesta = darRecursoPersonaje(&listaPersonajes, &listaRecursos, personaje->idPersonaje,
 				personaje->idRecurso);
@@ -396,25 +398,67 @@ void tratarSolicitudRecurso(char* data){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void tratarFinalizacionPersonaje(char* data){
-	//TODO:
+//  TODO: REvisar con plataforma
+	char pId;
+	t_list* adquiridos = NULL;
+	t_list* asignados = NULL;
+
+	pId = data[0];
+	log_info(logFile, "Matando personaje..");
+	adquiridos = getObjetosAdquiridosSerializable(listaPersonajes, pId);
+	matarPersonaje(&listaPersonajes, &listaRecursos, pId);
+	mandarRecursosLiberados(adquiridos);
+	asignados = esperarRecursosAsignados();
+	actualizarEstado(asignados);
+	listaRecursos_destroy(adquiridos);
+	listaRecursos_destroy(asignados);
+	log_info(logFile, "El personaje: %c, finalizo el nivel", pId);
+	dibujar();
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void notificarMuertePersonaje(char id){
-	//TODO:
+void notificarMuertePersonaje(char id, int causa) {
+	header_t h;
+	t_list* adquiridos = NULL;
+	t_list* asignados = NULL;
+	int16_t length;
+
+	h.type = causa;
+	h.length = sizeof(char) + 1;
+
+	adquiridos = getObjetosAdquiridosSerializable(listaPersonajes, id);
+	char* adqData = listaRecursos_serializer(adquiridos, &length);
+
+	char* data = malloc(h.length + length);
+	memcpy(data, configObj->nombre, h.length);
+	memcpy(data + h.length, adqData, length);
+	h.length += length;
+	sockets_send(plataformaSockfd, &h, data);
+	asignados = esperarRecursosAsignados();
+	actualizarEstado(asignados);
+
+	listaRecursos_destroy(adquiridos);
+	listaRecursos_destroy(asignados);
+	free(data);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void notificacionDarRecurso(char id){
-	//TODO:
+	header_t header;
+	header.type = OTORGAR_RECURSO;
+	header.length = 0;
+	sockets_send(plataformaSockfd, &header, "");
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void notificacionBloqueo(char id){
-	//TODO:
+	header_t header;
+	header.type = NEGAR_RECURSO;
+	header.length = 0;
+	sockets_send(plataformaSockfd, &header, "");
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -483,6 +527,67 @@ int personajeEnCaja(char pId, char rId) {
 	coordenadas_destroy(posPersonaje);
 
 	return enCaja;
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void mandarRecursosLiberados(t_list* recursosLiberados) {
+	header_t header;
+	header.type = NOTIFICACION_RECURSOS_LIBERADOS;
+	int16_t length;
+	char* data = listaRecursos_serializer(recursosLiberados, &length);
+	header.length = length;
+
+	if (sockets_send(plataformaSockfd, &header, data) == 0) {
+
+		log_error(logFile, "Se perdio la conexion con orquestador");
+	} else {
+		log_info(logFile, "Enviando recuros liberados al planificador");
+	}
+	free(data);
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+t_list* esperarRecursosAsignados() {
+	log_info(logFile, "Reciviendo recursos asignados");
+	header_t header;
+	t_list* asignados = NULL;
+	char* data;
+	if (recv(plataformaSockfd, &header, sizeof(header), MSG_WAITALL) == 0) {
+		log_error(logFile, "Conexion perdida con el orqestador");
+	}
+
+	if (header.type == NOTIFICACION_RECURSOS_ASIGNADOS) {
+		data = malloc(header.length);
+		if (header.length > 0) {
+			recv(plataformaSockfd, data, header.length, MSG_WAITALL);
+			asignados = listaRecursos_deserializer(data, header.length);
+		} else if (header.length == 0) {
+			log_debug(logFile, "El orquestador no uso ningun recurso");
+			return asignados = list_create();
+		}
+
+	} else {
+		log_error(logFile, "Mensaje inesperado del Orquestador");
+	}
+	free(data);
+	return asignados;
+}
+
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void actualizarEstado(t_list* asignados) {
+
+	log_debug(logFile, "Actualizando estado de recurso y personajes...");
+	personaje_recurso_t* personaje;
+	int i;
+	for (i = 0; i < asignados->elements_count; ++i) {
+		personaje = list_get(asignados, i);
+		darRecursoPersonaje(&listaPersonajes, &listaRecursos, personaje->idPersonaje, personaje->idRecurso);
+	}
+
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -575,7 +680,7 @@ void perseguirPersonaje(coordenada_t* posicion){
 	temp = listaPersonajes;
 	while (temp != NULL){
 		if (coordenadasIgualesInt(posicion, temp->posx, temp->posy)) {
-			notificarMuertePersonaje(temp->id);
+			notificarMuertePersonaje(temp->id, VICTIMA_ENEMIGO);
 		}
 	}
 

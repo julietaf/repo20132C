@@ -79,12 +79,15 @@ void tratarSolicitudUbicacionCaja(char* data);
 void tratarMovimiento(char* data);
 void tratarSolicitudRecurso(char* data);
 void tratarFinalizacionPersonaje(char* data);
-void notificarMuertePersonaje(char id);
+void notificarMuertePersonaje(char id, int causa);
 void notificacionDarRecurso(char id);
 void notificacionBloqueo(char id);
 void crearHiloEnemigo ();
 void dibujar();
 int personajeEnCaja(char pId, char rId);
+void mandarRecursosLiberados(t_list* recursosLiberados);
+t_list* esperarRecursosAsignados();
+void actualizarEstado(t_list* asignados);
 //-----------------------Hilo DeadLock-------------------------------
 void deadLock();
 //-----------------------Hilo Enemigo--------------------------------
