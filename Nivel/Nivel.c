@@ -153,9 +153,9 @@ void inicializarSockEscucha() {
 
 void inicializarConexionPlataforma() {
 
-	orquestadorSockfd = conectarOrquestador();//Cambiar por plataforma
-	hacerHandshake(orquestadorSockfd);
-	enviarDatosConexion();//TODO: enviar datos del algoritmo y nombre a Orquestador
+	plataformaSockfd = conectarOrquestador();
+	hacerHandshake(plataformaSockfd);
+	enviarDatosAlgoritmo();
 	recibirDatosPlanificador();
 
 }
@@ -204,38 +204,39 @@ void hacerHandshake(int sockfdReceptor) {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void enviarDatosConexion() {
+void enviarDatosAlgoritmo() {
 	header_t h;
-	ip_info_t i;
-	i.addr = configObj->localhostaddr;
-	i.port = configObj->localhostport;
-	h.type = NOTIFICAR_DATOS_NIVEL;
-	h.length = strlen(configObj->nombre) + 1;
+	int16_t lenght;
+	informacion_planificacion_t* datosAlgoritmo =malloc(sizeof(informacion_planificacion_t));
+	char* data;
 
-	int16_t length;
+	obtenerDatosAlgorimo(datosAlgoritmo);
+	data = informacionPlanificacion_serializer(datosAlgoritmo, &lenght);
 
-	char* ipInfo = ipInfo_serializer(&i, &length);
+	h.type = NOTIFICAR_ALGORITMO_PLANIFICACION;
+	h.length  = lenght;
 
-	char* data = malloc(h.length + length);
-	memcpy(data, configObj->nombre, h.length);
-	memcpy(data + h.length, ipInfo, length);
-	h.length += length;
-	sockets_send(orquestadorSockfd, &h, data);
+	sockets_send(plataformaSockfd, &h, data);
+
 	free(data);
+
+
 }
+
+
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void recibirDatosPlanificador() {
 	header_t header;
 	char* data;
-	if (recv(orquestadorSockfd, &header, sizeof(header), MSG_WAITALL) == 0) {
+	if (recv(plataformaSockfd, &header, sizeof(header), MSG_WAITALL) == 0) {
 		log_error(logFile, "Conexion perdida con el planificador");
 	}
 
 	if (header.type == NOTIFICAR_DATOS_PLANIFICADOR) {
 		data = malloc(header.length);
-		recv(orquestadorSockfd, data, header.length, MSG_WAITALL);
+		recv(plataformaSockfd, data, header.length, MSG_WAITALL);
 		ip_info_t *infoPlanificador = ipInfo_deserializer(data);
 		log_info(logFile, "Planificador IP: %s port: %s",
 				infoPlanificador->addr, infoPlanificador->port);
@@ -253,6 +254,10 @@ void atenderMensajePlanificador(int sockfd) {
 		case NOTIFICAR_DATOS_PERSONAJE:
 			recv(sockfd, data, h.length, MSG_WAITALL);
 			tratarNuevoPersonaje(data);
+			break;
+		case UBICACION_CAJA:
+			recv(sockfd, data, h.length, MSG_WAITALL);
+			tratarSolicitudUbicacionCaja(data);
 			break;
 		case NOTIFICACION_MOVIMIENTO:
 			recv(sockfd, data, h.length, MSG_WAITALL);
@@ -292,20 +297,100 @@ int validarRecive(int sockfd, header_t* h) {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
+void obtenerDatosAlgorimo(informacion_planificacion_t* datosAlgoritmo){
+	t_config* conF = config_create(CONFIG_PATH);
+
+	if(config_has_property(conF, "Nombre")){
+		datosAlgoritmo->nombreNivel = malloc(strlen(config_get_string_value(conF, "Nombre")) + 1);
+		strcpy(datosAlgoritmo->nombreNivel, config_get_string_value(conF, "Nombre"));
+	}
+
+	if(config_has_property(conF, "algoritmo")){
+		char* algoritmo = config_get_string_value(conF, "algoritmo");
+		datosAlgoritmo->algoritmo = strcmp("RR", algoritmo) == 0 ? ROUND_ROBIN : SRDF;
+	}
+
+	if(config_has_property(conF, "quantum")){
+		datosAlgoritmo->quantum = config_get_int_value(conF, "quantum");
+	}
+
+	if(config_has_property(conF, "retardo")){
+		datosAlgoritmo->retardo = config_get_int_value(conF, "retardo");
+	}
+
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
 void tratarNuevoPersonaje(char* data){
-	//TODO:
+	char pId;
+
+	pId = data[0];
+	log_info(logFile, "Creando Personaje...");
+	CrearPersonaje(&listaPersonajes, pId, 0, 0, 1, orden);
+	orden++;
+	dibujar();
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void tratarSolicitudUbicacionCaja(char* data){
+	char rId = data[0];
+	coordenada_t* coord;
+	header_t h;
+	int16_t length;
+	char* coordSerialized;
+
+	log_info(logFile, "Atendiendo pedido de posicion de caja %c", rId);
+	coord = obtenerCoordenadas(listaRecursos, rId);
+	coordSerialized = coordenadas_serializer(coord, &length);
+
+	h.type = UBICACION_CAJA;
+	h.length = length;
+
+	sockets_send(plataformaSockfd, &h, coordSerialized);
+
+	free(coordSerialized);
+	coordenadas_destroy(coord);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void tratarMovimiento(char* data){
-	//TODO:
+	char pId;
+	coordenada_t* pCoordenada;
+	int offset = sizeof(char);
+
+	pId = data[0];
+	pCoordenada = coordenadas_deserializer(data+offset);
+
+	MoverPersonaje(listaPersonajes, pId, pCoordenada->ejeX, pCoordenada->ejeY);
+
+	free(pCoordenada);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void tratarSolicitudRecurso(char* data){
 	//TODO:
+	personaje_recurso_t* personaje;
+	personaje = personajeRecurso_deserializer(data);
+	int respuesta;
+	if (personajeEnCaja(personaje->idPersonaje, personaje->idRecurso)) {
+		respuesta = darRecursoPersonaje(&listaPersonajes, &listaRecursos, personaje->idPersonaje,
+				personaje->idRecurso);
+	} else {
+		log_error(logFile, "acceso incorrecto a caja de recurso: %s", personaje->idRecurso);
+	}
+	if (respuesta) {
+		log_info(logFile, "Se le asigno el recurso: %c, al personaje: %c", personaje->idRecurso,
+				personaje->idPersonaje);
+		notificacionDarRecurso(personaje->idPersonaje);
+	} else {
+		log_info(logFile, "Se bloqueo el personaje: %c, al pedir el recruso %c",
+				personaje->idPersonaje, personaje->idRecurso);
+		notificacionBloqueo(personaje->idPersonaje);
+	}
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -317,6 +402,18 @@ void tratarFinalizacionPersonaje(char* data){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void notificarMuertePersonaje(char id){
+	//TODO:
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void notificacionDarRecurso(char id){
+	//TODO:
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void notificacionBloqueo(char id){
 	//TODO:
 }
 
@@ -370,6 +467,22 @@ void crearHiloEnemigo (){
 		pthread_create(&hEnemigo, NULL, (void*) enemigo,  (void*)i );
 		sleep(1);
 	}
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+int personajeEnCaja(char pId, char rId) {
+
+	int enCaja = 0;
+	coordenada_t* posCaja = obtenerCoordenadas(listaRecursos, rId);
+	coordenada_t* posPersonaje = obtenerCoordenadas(listaPersonajes, pId);
+
+	enCaja = coordenadasIguales(posCaja, posPersonaje);
+
+	coordenadas_destroy(posCaja);
+	coordenadas_destroy(posPersonaje);
+
+	return enCaja;
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------

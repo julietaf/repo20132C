@@ -155,7 +155,7 @@ void coordenadaRandomEjes(coordenada_t* ret, int xMax, int yMax) {
  * @NAME: movimientoLRandom
  * @DESC: Retorna una lista con los 3 movimientos de una L al azar
  */
-t_list* movimientoLRandom(coordenada_t* cActual, t_list* buffer) {
+void movimientoLRandom(coordenada_t* cActual, t_list* buffer) {
 	int orden, direccion, sentido;
 
 	orden = randomNumber(0, 1);
@@ -173,7 +173,7 @@ t_list* movimientoLRandom(coordenada_t* cActual, t_list* buffer) {
  * 		   Orden 1 = primero 2 despues 1, 0 viceversa
  * 		   Sentido = 1 dobla en positivo, 0 en negativo
  */
-t_list* movimientoL(coordenada_t* cActual,t_list* buffer, int orden, int direccion,
+void movimientoL(coordenada_t* cActual,t_list* buffer, int orden, int direccion,
 		int sentido) {
 
 	coordenada_t* c1, *c2, *c3;

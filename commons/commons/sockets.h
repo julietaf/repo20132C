@@ -48,7 +48,7 @@ typedef struct {
 typedef struct {
 	char idPersonaje;
 	char idRecurso;
-}__attribute__((__packed__)) personaje_desbloqueado_t;
+}__attribute__((__packed__)) personaje_recurso_t;
 
 typedef struct {
 	char simbolo;
@@ -125,11 +125,9 @@ recurso_t* crearNodoRecurso(char id, int cant);
 char* personajesInterbloqueados_serializer(t_list* self, int16_t *length);
 t_list* personajesInterbloqueados_deserializer(char*serialized, int16_t length);
 personaje_interbloqueado_t* crearNodoInterbloqueado(char id);
-char *personajeDesbloqueado_serializer(personaje_desbloqueado_t *self,
+char *personajeRecurso_serializer(personaje_recurso_t *self,
 		int16_t *length);
-personaje_desbloqueado_t *personajeDesbloqueado_deserializer(char *data);
-char *listaPersonajeDesbloqueado_serializer(t_list *self, int16_t *length);
-t_list *listaPersonajeDesbloqueado_deserializer(char *data, int16_t length);
+personaje_recurso_t *personajeRecurso_deserializer(char *data);
 char *notificacionDatosPersonaje_serializer(
 		notificacion_datos_personaje_t *datos, int16_t *length);
 notificacion_datos_personaje_t *notificacionDatosPersonaje_deserializer(

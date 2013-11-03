@@ -48,10 +48,11 @@ typedef struct nivel_conf_t {
 //-----------------------------------------GLOBALES-----------------------------------------------------
 
 t_log *logFile;
-int orquestadorSockfd;
+int plataformaSockfd;
 int sockEscucha;
 int fil = 100, col = 100;
 //int fil, col;
+int orden = 0;
 ITEM_NIVEL* listaRecursos = NULL;
 ITEM_NIVEL* listaPersonajes = NULL;
 ITEM_NIVEL* listaEnemigos = NULL;
@@ -68,17 +69,22 @@ void inicializarSockEscucha();
 void inicializarConexionPlataforma();
 int conectarOrquestador();
 void hacerHandshake(int sockfdReceptor);
-void enviarDatosConexion();
+void enviarDatosAlgoritmo();
 void recibirDatosPlanificador();
 void atenderMensajePlanificador(int sockfd);
 int validarRecive(int sockfd, header_t* h);
+void obtenerDatosAlgorimo(informacion_planificacion_t* datosAlgoritmo);
 void tratarNuevoPersonaje(char* data);
+void tratarSolicitudUbicacionCaja(char* data);
 void tratarMovimiento(char* data);
 void tratarSolicitudRecurso(char* data);
 void tratarFinalizacionPersonaje(char* data);
 void notificarMuertePersonaje(char id);
+void notificacionDarRecurso(char id);
+void notificacionBloqueo(char id);
 void crearHiloEnemigo ();
 void dibujar();
+int personajeEnCaja(char pId, char rId);
 //-----------------------Hilo DeadLock-------------------------------
 void deadLock();
 //-----------------------Hilo Enemigo--------------------------------

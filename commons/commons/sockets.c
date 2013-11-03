@@ -380,7 +380,9 @@ personaje_interbloqueado_t* crearNodoInterbloqueado(char id) {
 	return temp;
 }
 
-char *personajeDesbloqueado_serializer(personaje_desbloqueado_t *self,
+//-------------------------------Personaje-Recurso------------------------------
+
+char *personajeRecuros_serializer(personaje_recurso_t *self,
 		int16_t *length) {
 	char *serialized = malloc(sizeof(char) + sizeof(char));
 	int offset = 0, tmp_size = 0;
@@ -395,9 +397,9 @@ char *personajeDesbloqueado_serializer(personaje_desbloqueado_t *self,
 	return serialized;
 }
 
-personaje_desbloqueado_t *personajeDesbloqueado_deserializer(char *data) {
-	personaje_desbloqueado_t *personaje = malloc(
-			sizeof(personaje_desbloqueado_t));
+personaje_recurso_t *personajeRecurso_deserializer(char *data) {
+	personaje_recurso_t *personaje = malloc(
+			sizeof(personaje_recurso_t));
 	int offset = 0, tmp_size = 0;
 
 	memcpy(&personaje->idPersonaje, data, tmp_size = sizeof(char));
@@ -408,41 +410,7 @@ personaje_desbloqueado_t *personajeDesbloqueado_deserializer(char *data) {
 	return personaje;
 }
 
-char *listaPersonajeDesbloqueado_serializer(t_list *self, int16_t *length) {
-	char *serialized = malloc(
-			sizeof(personaje_desbloqueado_t) * self->elements_count);
-	char *personajeSerialized;
-	int i, offset = 0;
-	int16_t tmp_size = 0;
 
-	for (i = 0; i < self->elements_count; i++) {
-		personaje_desbloqueado_t *personaje = list_get(self, i);
-		personajeSerialized = personajeDesbloqueado_serializer(personaje,
-				&tmp_size);
-		memcpy(serialized + offset, personajeSerialized, tmp_size);
-		offset += tmp_size;
-		free(personajeSerialized);
-	}
-
-	*length = offset;
-
-	return serialized;
-}
-
-t_list *listaPersonajeDesbloqueado_deserializer(char *data, int16_t length) {
-	t_list *self = list_create();
-	personaje_desbloqueado_t *nuevoNodo;
-	int offset = 0;
-	int tmp_size = sizeof(char) + sizeof(char);
-
-	while (offset < length) {
-		nuevoNodo = personajeDesbloqueado_deserializer(data + offset);
-		offset += tmp_size;
-		list_add(self, nuevoNodo);
-	}
-
-	return self;
-}
 
 char *notificacionDatosPersonaje_serializer(
 		notificacion_datos_personaje_t *datos, int16_t *length) {
@@ -532,3 +500,7 @@ informacion_planificacion_t *informacionPlanificacion_deserializer(
 void informacionPlanificacion_destroy(informacion_planificacion_t*self) {
 	free(self);
 }
+
+//
+
+
