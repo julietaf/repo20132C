@@ -5,24 +5,24 @@
 #include "sockets.h"
 #include "collections/list.h"
 
-void BorrarItem(ITEM_NIVEL** i, char id);
-void restarRecurso(ITEM_NIVEL* i, char id);
-void restarRecursos(ITEM_NIVEL* ListaItems, char id, int cant);
-void MoverPersonaje(ITEM_NIVEL* i, char personaje, int x, int y);
-void moverEnemigo(ITEM_NIVEL* ListaItems, int idEnemigo, int x, int y);
-void CrearPersonaje(ITEM_NIVEL** i, char id, int x , int y, int vidas, int socket);
-void CrearCaja(ITEM_NIVEL** i, char id, int x , int y, int cant);
-void CrearEnemigo(ITEM_NIVEL** i, char id, int x, int y, int idEnemigo);
-void CrearItem(ITEM_NIVEL** i, char id, int x, int y, char tipo, int cant, int socket, int idEnemigo);
-coordenada_t *obtenerCoordenadas(ITEM_NIVEL* i, char id);
-void matarPersonaje(ITEM_NIVEL** i,ITEM_NIVEL** j, char id);
-void incrementarRecurso(ITEM_NIVEL* i, char id, int cant);
-int darRecursoPersonaje(ITEM_NIVEL** i, ITEM_NIVEL** j, char id, char objetoId);
-int cantidadItem(ITEM_NIVEL *ListaItems, char id);
+void BorrarItem(t_list* i, char id);
+void restarRecurso(t_list* i, char id);
+void restarRecursos(t_list* ListaItems, char id, int cant);
+void MoverPersonaje(t_list* i, char personaje, int x, int y);
+void moverEnemigo(t_list* ListaItems, int idEnemigo, int x, int y);
+void CrearPersonaje(t_list* i, char id, int x , int y, int vidas, int socket);
+void CrearCaja(t_list* i, char id, int x , int y, int cant);
+void CrearEnemigo(t_list* i, char id, int x, int y, int idEnemigo);
+void CrearItem(t_list* i, char id, int x, int y, char tipo, int cant, int socket, int idEnemigo);
+coordenada_t *obtenerCoordenadas(t_list* i, char id);
+void matarPersonaje(t_list* i,t_list* j, char id);
+void incrementarRecurso(t_list* i, char id, int cant);
+int darRecursoPersonaje(t_list* i, t_list* j, char id, char objetoId);
+int cantidadItem(t_list *ListaItems, char id);
 void CrearAdquirido(ITEM_ADQ** ListaAdq, char id, char request, int cant);
 void BorrarAdquirido(ITEM_ADQ** ListaAdq, char id);
-ITEM_ADQ* getObjetosAdquiridos(ITEM_NIVEL* listaP, char idP);
-t_list* getObjetosAdquiridosSerializable(ITEM_NIVEL* listaP, char idP);
-void destroyItems(ITEM_NIVEL** ListaItems);
+ITEM_ADQ* getObjetosAdquiridos(t_list* listaP, char idP);
+t_list* getObjetosAdquiridosSerializable(t_list* listaP, char idP);
+void destroyItems(t_list* ListaItems);
 void destroyAdquirido(ITEM_ADQ** ListaAdq);
 #endif

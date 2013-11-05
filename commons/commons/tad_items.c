@@ -9,11 +9,11 @@
 //----------------------------------------------------------------------------------------------
 // FUNCIONES PORPIETARIAS
 //----------------------------------------------------------------------------------------------
+ITEM_NIVEL* _search_item_by_id(t_list* items, char id);
 
-void CrearItem(ITEM_NIVEL** ListaItems, char id, int x, int y, char tipo,
-		int cant, int socket, int idEnemigo) {
-	ITEM_NIVEL * temp;
-	temp = malloc(sizeof(ITEM_NIVEL));
+void CrearItem(t_list* ListaItems, char id, int x, int y, char tipo, int cant,
+		int socket, int idEnemigo) {
+	ITEM_NIVEL * temp = malloc(sizeof(ITEM_NIVEL));
 
 	temp->id = id;
 	temp->posx = x;
@@ -23,8 +23,9 @@ void CrearItem(ITEM_NIVEL** ListaItems, char id, int x, int y, char tipo,
 	temp->objetosAdquiridos = NULL;
 	temp->socket = socket;
 	temp->idEnemigo = idEnemigo;
-	temp->next = *ListaItems;
-	*ListaItems = temp;
+
+	list_add(ListaItems, temp);
+
 }
 
 void CrearAdquirido(ITEM_ADQ** ListaAdq, char id, char request, int cant) {
@@ -39,37 +40,25 @@ void CrearAdquirido(ITEM_ADQ** ListaAdq, char id, char request, int cant) {
 	*ListaAdq = temp;
 }
 
-void CrearPersonaje(ITEM_NIVEL** ListaItems, char id, int x, int y, int vidas,
+void CrearPersonaje(t_list* ListaItems, char id, int x, int y, int vidas,
 		int socket) {
 	CrearItem(ListaItems, id, x, y, PERSONAJE_ITEM_TYPE, vidas, socket, -1);
 }
 
-void CrearCaja(ITEM_NIVEL** ListaItems, char id, int x, int y, int cant) {
+void CrearCaja(t_list* ListaItems, char id, int x, int y, int cant) {
 	CrearItem(ListaItems, id, x, y, RECURSO_ITEM_TYPE, cant, -1, -1);
 }
 
-void CrearEnemigo(ITEM_NIVEL** ListaItems, char id, int x, int y, int idEnemigo) {
+void CrearEnemigo(t_list* ListaItems, char id, int x, int y, int idEnemigo) {
 	CrearItem(ListaItems, id, x, y, PERSONAJE_ITEM_TYPE, -1, -1, idEnemigo);
 }
 
-void BorrarItem(ITEM_NIVEL** ListaItems, char id) {
-	ITEM_NIVEL * temp = *ListaItems;
-	ITEM_NIVEL * oldtemp;
-
-	if ((temp != NULL )&& (temp->id == id)){
-	*ListaItems = (*ListaItems)->next;
-
-	free(temp);
-} else {
-	while((temp != NULL) && (temp->id != id)) {
-		oldtemp = temp;
-		temp = temp->next;
+void BorrarItem(t_list* items, char id) {
+	bool _search_by_id(ITEM_NIVEL* item) {
+		return item->id == id;
 	}
-	if ((temp != NULL) && (temp->id == id)) {
-		oldtemp->next = temp->next;
-		free(temp);
-	}
-}
+
+	list_remove_by_condition(items, (void*) _search_by_id);
 
 }
 
@@ -92,134 +81,117 @@ void BorrarAdquirido(ITEM_ADQ** ListaAdq, char id) {
 }
 }
 
-void MoverPersonaje(ITEM_NIVEL* ListaItems, char id, int x, int y) {
+void MoverPersonaje(t_list* items, char id, int x, int y) {
 
-	ITEM_NIVEL * temp;
-	temp = ListaItems;
+	ITEM_NIVEL* item = _search_item_by_id(items, id);
 
-	while ((temp != NULL )&& (temp->id != id)){
-	temp = temp->next;
-}
-	if ((temp != NULL )&& (temp->id == id)){
-	temp->posx = x;
-	temp->posy = y;
-}
-
-}
-
-void moverEnemigo(ITEM_NIVEL* ListaItems, int idEnemigo, int x, int y) {
-
-	ITEM_NIVEL * temp;
-	temp = ListaItems;
-
-	while ((temp != NULL )&& (temp->idEnemigo != idEnemigo)){
-	temp = temp->next;
-}
-	if ((temp != NULL )&& (temp->idEnemigo == idEnemigo)){
-	temp->posx = x;
-	temp->posy = y;
-}
-
-}
-
-void restarRecurso(ITEM_NIVEL* ListaItems, char id) {
-
-	ITEM_NIVEL * temp;
-	temp = ListaItems;
-
-	while ((temp != NULL )&& (temp->id != id)){
-	temp = temp->next;
-}
-	if ((temp != NULL )&& (temp->id == id)){
-	if ((temp->item_type) && (temp->quantity > 0)) {
-		//temp->quantity = temp->quantity--;
-		(*temp).quantity = temp->quantity-1;
+	if (item != NULL ) {
+		item->posx = x;
+		item->posy = y;
+	} else {
+		printf("WARN: Item %c no existente\n", id);
 	}
-}
 
 }
 
-void restarRecursos(ITEM_NIVEL* ListaItems, char id, int cant) {
+void moverEnemigo(t_list* ListaItems, int idEnemigo, int x, int y) {
 
-	ITEM_NIVEL * temp;
-	temp = ListaItems;
+//	ITEM_NIVEL * temp;
+//	temp = ListaItems;
+//
+//	while ((temp != NULL )&& (temp->idEnemigo != idEnemigo)){
+//	temp = temp->next;
+//}
+//	if ((temp != NULL )&& (temp->idEnemigo == idEnemigo)){
+//	temp->posx = x;
+//	temp->posy = y;
+//}
 
-	while ((temp != NULL )&& (temp->id != id)){
-	temp = temp->next;
 }
-	if ((temp != NULL )&& (temp->id == id)){
-	if (temp->item_type) {
 
-		(*temp).quantity = temp->quantity-cant;
+void restarRecurso(t_list* items, char id) {
+
+	ITEM_NIVEL* item = _search_item_by_id(items, id);
+
+	if (item != NULL ) {
+		item->quantity = item->quantity > 0 ? item->quantity - 1 : 0;
+	} else {
+		printf("WARN: Item %c no existente\n", id);
 	}
-}
 
 }
 
-coordenada_t* obtenerCoordenadas(ITEM_NIVEL* ListaItems, char id) {
-	ITEM_NIVEL * temp = ListaItems;
+void restarRecursos(t_list* items, char id, int cant) {
+
+	ITEM_NIVEL* item = _search_item_by_id(items, id);
+
+	if (item != NULL ) {
+		item->quantity = item->quantity > cant ? item->quantity - cant : 0;
+	} else {
+		printf("WARN: Item %c no existente\n", id);
+	}
+
+}
+
+coordenada_t* obtenerCoordenadas(t_list* items, char id) {
 	coordenada_t* resul = NULL;
 
-	while ((temp != NULL )&& (temp->id != id)){
-	temp = temp->next;
-}
-	if ((temp != NULL )&& (temp->id == id)){
-	resul=malloc(sizeof(coordenada_t));
-	resul->ejeX = temp->posx;
-	resul->ejeY = temp->posy;
-}
+	ITEM_NIVEL* item = _search_item_by_id(items, id);
+
+	if (item != NULL ) {
+		resul = malloc(sizeof(coordenada_t));
+		resul->ejeX = item->posx;
+		resul->ejeY = item->posy;
+	} else {
+		printf("WARN: Item %c no existente\n", id);
+	}
+
 	return resul;
 }
 
-void matarPersonaje(ITEM_NIVEL** ListaP, ITEM_NIVEL** ListaR, char id) {
+void matarPersonaje(t_list* personajes, t_list* recursos, char id) {
 	//encuentro personaje
-	ITEM_NIVEL * temp = *ListaP;
-	while ((temp != NULL )&& (temp->id != id)){
-	temp = temp->next;
-}
+	ITEM_NIVEL* personaje = _search_item_by_id(personajes, id);
+
 	//Libero intems
-	if ((temp != NULL )&& (temp->id == id) && (temp->item_type==PERSONAJE_ITEM_TYPE)){
-	while (temp->objetosAdquiridos != NULL) {
-		incrementarRecurso(*ListaR, temp->objetosAdquiridos->id, temp->objetosAdquiridos->quantity);
+	if ((personaje != NULL )&& (personaje->item_type==PERSONAJE_ITEM_TYPE)){
+	while (personaje->objetosAdquiridos != NULL) {
+		incrementarRecurso(recursos, personaje->objetosAdquiridos->id, personaje->objetosAdquiridos->quantity);
 
-		BorrarAdquirido(&temp->objetosAdquiridos, temp->objetosAdquiridos->id);
+		BorrarAdquirido(&personaje->objetosAdquiridos, personaje->objetosAdquiridos->id);
 	}
-	//Cierro el socket
-	close(temp->socket);
-	//Borro Personaje
-	BorrarItem(ListaP, id);
+//	//Cierro el socket
+//	close(temp->socket);
+//	//Borro Personaje
+	BorrarItem(personajes, id);
 }
 
 }
 
-int darRecursoPersonaje(ITEM_NIVEL** ListaP, ITEM_NIVEL** ListaR, char id,
+int darRecursoPersonaje(t_list* personajes, t_list* recursos, char id,
 		char objetoId) {
 
-	ITEM_NIVEL * tempP = *ListaP;
+	ITEM_NIVEL * personaje = _search_item_by_id(personajes, id);
 	int respuesta;
 
-	while ((tempP != NULL )&& (tempP->id != id)){ //encuentro personaje
-	tempP = tempP->next;
-}
-
-	if ((tempP != NULL )&& (tempP->id == id) && (tempP->item_type==0)){
-	ITEM_ADQ* temp2 = (tempP->objetosAdquiridos);
+	if ((personaje != NULL )&& (personaje->id == id) && (personaje->item_type==0)){
+	ITEM_ADQ* temp2 = (personaje->objetosAdquiridos);
 
 	while (temp2 != NULL && temp2->id != objetoId) { //Busco Recurso en el personaje
 		temp2 = temp2->next;
 	}
 	if (temp2 == NULL) { //si no lo encontre lo agrego si no lo incremento
 		//Lo Creo
-		if (cantidadItem(*ListaR, objetoId)>0) {//valido que haya recursos disponibles para dar
-			CrearAdquirido(&tempP->objetosAdquiridos,objetoId,0,1);
+		if (cantidadItem(recursos, objetoId)>0) {//valido que haya recursos disponibles para dar
+			CrearAdquirido(&personaje->objetosAdquiridos,objetoId,0,1);
 			respuesta = 1;
 		} else {		// si no hay seteo flag peticion actura (request)
-			CrearAdquirido(&tempP->objetosAdquiridos,objetoId,1,0);
+			CrearAdquirido(&personaje->objetosAdquiridos,objetoId,1,0);
 			respuesta = 0;
 		}
 	} else {
 		//Incremento
-		if (cantidadItem(*ListaR, objetoId)>0) {
+		if (cantidadItem(recursos, objetoId)>0) {
 			temp2->quantity = temp2->quantity+1;
 			temp2->actual_request = 0;
 			respuesta = 1;
@@ -229,7 +201,7 @@ int darRecursoPersonaje(ITEM_NIVEL** ListaP, ITEM_NIVEL** ListaR, char id,
 		}
 
 	}
-	restarRecurso(*ListaR, objetoId);
+	restarRecurso(recursos, objetoId);
 	//printf("Cantidad recursos: %d\n", temp2->quantity);
 
 }
@@ -237,82 +209,82 @@ int darRecursoPersonaje(ITEM_NIVEL** ListaP, ITEM_NIVEL** ListaR, char id,
 
 }
 
-void incrementarRecurso(ITEM_NIVEL* ListaItems, char id, int cant) {
+void incrementarRecurso(t_list* items, char id, int cant) {
 
-	ITEM_NIVEL * temp;
-	temp = ListaItems;
+	ITEM_NIVEL* item = _search_item_by_id(items, id);
 
-	while ((temp != NULL )&& (temp->id != id)){
-	temp = temp->next;
-}
-	if ((temp != NULL )&& (temp->id == id)){
-	if (temp->item_type) {
-
-		(*temp).quantity = temp->quantity+cant;
+	if (item != NULL ) {
+		item->quantity = item->quantity + cant;
+	} else {
+		printf("WARN: Item %c no existente\n", id);
 	}
-}
 
 }
 
-int cantidadItem(ITEM_NIVEL *ListaItems, char id) {
-	ITEM_NIVEL * temp = ListaItems;
+int cantidadItem(t_list *items, char id) {
+
 	int resul;
+	ITEM_NIVEL* item = _search_item_by_id(items, id);
 
-	while ((temp != NULL )&& (temp->id != id)){
-	temp = temp->next;
-}
-	if ((temp != NULL )&& (temp->id == id)){
-	resul = temp->quantity;
+	if ((item != NULL )&& (item->id == id)){
+	resul = item->quantity;
 	return resul;
 }
 	return resul = -1;
 }
 
-ITEM_ADQ* getObjetosAdquiridos(ITEM_NIVEL* listaP, char idP) {
-	ITEM_ADQ* adquiridos;
-	ITEM_NIVEL* tempP = listaP;
-	while (tempP != NULL ) {
-		if (tempP->id == idP) {
-			adquiridos = tempP->objetosAdquiridos;
-			break;
-		}
-		tempP = tempP->next;
-	}
+ITEM_ADQ* getObjetosAdquiridos(t_list* personajes, char idP) {
+	ITEM_ADQ* adquiridos = NULL;
+	ITEM_NIVEL* personaje = _search_item_by_id(personajes, idP);
+
+	if ((personaje != NULL )&& (personaje->id == idP)){
+	adquiridos = personaje->objetosAdquiridos;
+}
 
 	return adquiridos;
 }
 
-t_list* getObjetosAdquiridosSerializable(ITEM_NIVEL* listaP, char idP) {
-	t_list* adquiridos = NULL;
-	ITEM_NIVEL* tempP = NULL;
-	adquiridos = list_create();
-	tempP = listaP;
-	while (tempP != NULL ) {
-		if (tempP->id == idP) {
-			ITEM_ADQ* tempA = NULL;
-			tempA = tempP->objetosAdquiridos;
-			while (tempA != NULL ) {
-//				listaRecursos_add(&adquiridos, tempA->id,tempA->quantity);
-				list_add(adquiridos,
-						crearNodoRecurso(tempA->id, tempA->quantity));
-				tempA = tempA->next;
+t_list* getObjetosAdquiridosSerializable(t_list* listaP, char idP) {
 
-			}
+	ITEM_ADQ* tempAdquiridos = NULL;
+	t_list* adquiridos = list_create();
+	ITEM_NIVEL* personaje = _search_item_by_id(listaP, idP);
+
+	if ((personaje != NULL )&& (personaje->id == idP)){
+		tempAdquiridos = personaje->objetosAdquiridos;
+		while (tempAdquiridos != NULL ) {
+			list_add(adquiridos, crearNodoRecurso(tempAdquiridos->id, tempAdquiridos->quantity));
+			tempAdquiridos = tempAdquiridos->next;
 		}
-		tempP = tempP->next;
 	}
 
 	return adquiridos;
+
+//	t_list* adquiridos = NULL;
+//	ITEM_NIVEL* tempP = NULL;
+//	adquiridos = list_create();
+//	tempP = listaP;
+//	while (tempP != NULL ) {
+//		if (tempP->id == idP) {
+//			ITEM_ADQ* tempA = NULL;
+//			tempA = tempP->objetosAdquiridos;
+//			while (tempA != NULL ) {
+////				listaRecursos_add(&adquiridos, tempA->id,tempA->quantity);
+//				list_add(adquiridos,
+//						crearNodoRecurso(tempA->id, tempA->quantity));
+//				tempA = tempA->next;
+//
+//			}
+//		}
+//		tempP = tempP->next;
+//	}
+//
+//	return adquiridos;
 }
 
-void destroyItems(ITEM_NIVEL** ListaItems) {
+void destroyItems(t_list* ListaItems) {
 
-	while (*ListaItems != NULL ) {
-		ITEM_NIVEL * temp = *ListaItems;
-		destroyAdquirido(&temp->objetosAdquiridos);
-		*ListaItems = (*ListaItems)->next;
-		free(temp);
-	}
+	list_destroy_and_destroy_elements(ListaItems, (void*)free);
 
 }
 
@@ -323,4 +295,12 @@ void destroyAdquirido(ITEM_ADQ** ListaAdq) {
 		*ListaAdq = (*ListaAdq)->next;
 		free(temp);
 	}
+}
+
+ITEM_NIVEL* _search_item_by_id(t_list* items, char id) {
+	bool _search_by_id(ITEM_NIVEL* item) {
+		return item->id == id;
+	}
+
+	return list_find(items, (void*) _search_by_id);
 }

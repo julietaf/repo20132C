@@ -16,7 +16,6 @@ t_dl_vector* CrearNodoVector(char id, int value) {
 	return temp;
 }
 
-
 t_dl_celda* CrearCelda(char id_r, char id_p, int alloc, int req) {
 	t_dl_celda* temp;
 	temp = malloc(sizeof(t_dl_celda));
@@ -27,48 +26,77 @@ t_dl_celda* CrearCelda(char id_r, char id_p, int alloc, int req) {
 	return temp;
 }
 
+t_list* cargarMatriz(t_list* listaR, t_list* listaP) {
 
-t_list* cargarMatriz(ITEM_NIVEL* listaR, ITEM_NIVEL* listaP) {
-
-	ITEM_NIVEL* tempP = listaP;
-
+//	ITEM_NIVEL* tempP = listaP;
+	int i, j;
 	t_list* mat = list_create();
+	ITEM_NIVEL* tempP;
+	ITEM_NIVEL* tempR;
 
-	while (tempP != NULL ) {
-		ITEM_NIVEL* tempR = listaR;
-		while (tempR != NULL ) {
-			ITEM_ADQ* temp2 = tempP->objetosAdquiridos;
-			while ((temp2 != NULL )&& (temp2->id != tempR->id)){
-			temp2 = temp2->next;
+	for (i = 0; i < list_size(listaP); i++) {
+		tempP = list_get(listaP, i);
+
+		for (j = 0; j < list_size(listaR); j++) {
+			tempR = list_get(listaR, j);
+			ITEM_ADQ* tempAdq = tempP->objetosAdquiridos;
+			while ((tempAdq != NULL )&& (tempAdq->id != tempR->id)){
+			tempAdq = tempAdq->next;
 		}
-			if (temp2 == NULL ) {
+			if (tempAdq == NULL ) {
 				list_add(mat, CrearCelda(tempR->id, tempP->id, 0, 0));
 			} else {
 				list_add(mat,
-						CrearCelda(tempR->id, tempP->id, temp2->quantity,
-								temp2->actual_request));
+						CrearCelda(tempR->id, tempP->id, tempAdq->quantity,
+								tempAdq->actual_request));
 			}
-			tempR = tempR->next;
-
 		}
-		tempP = tempP->next;
 	}
+
+//	while (tempP != NULL ) {
+//		ITEM_NIVEL* tempR = listaR;
+//		while (tempR != NULL ) {
+//			ITEM_ADQ* temp2 = tempP->objetosAdquiridos;
+//			while ((temp2 != NULL )&& (temp2->id != tempR->id)){
+//			temp2 = temp2->next;
+//		}
+//			if (temp2 == NULL ) {
+//				list_add(mat, CrearCelda(tempR->id, tempP->id, 0, 0));
+//			} else {
+//				list_add(mat,
+//						CrearCelda(tempR->id, tempP->id, temp2->quantity,
+//								temp2->actual_request));
+//			}
+//			tempR = tempR->next;
+//
+//		}
+//		tempP = tempP->next;
+//	}
 	return mat;
 }
 
-t_list* cargarAvaible(ITEM_NIVEL* listaR, t_list* mat) {
-	ITEM_NIVEL* temp = listaR;
+t_list* cargarAvaible(t_list* listaR, t_list* mat) {
+//	ITEM_NIVEL* temp = listaR;
+//	t_list* avl = list_create();
+//
+//	while (temp != NULL ) {
+//
+//		if ((temp->item_type == RECURSO_ITEM_TYPE) && (temp != NULL )) {
+//			list_add(avl, CrearNodoVector(temp->id, temp->quantity));
+//
+//		}
+//		temp = temp->next;
+//	}
+	ITEM_NIVEL* temp = NULL;
 	t_list* avl = list_create();
+	int i;
 
-	while (temp != NULL ) {
-
+	for (i = 0; i < list_size(listaR); i++) {
+		temp = list_get(listaR, i);
 		if ((temp->item_type == RECURSO_ITEM_TYPE) && (temp != NULL )) {
 			list_add(avl, CrearNodoVector(temp->id, temp->quantity));
-
 		}
-		temp = temp->next;
 	}
-
 	return avl;
 }
 
@@ -166,16 +194,16 @@ int esMenorIgual(t_list* vec1, t_list* vec2) {
 			nodo2 = list_get(vec2, j);
 			if (nodo1->id == nodo2->id) {
 				if (nodo1->value > nodo2->value) {
-					iguales = 0;// hay al menos uno que no cumple
+					iguales = 0; // hay al menos uno que no cumple
 				}
 			}
 		}
 	}
 
-	return iguales;// son todos <=
+	return iguales; // son todos <=
 }
 
-int esCero(t_list* vec1){
+int esCero(t_list* vec1) {
 
 	t_dl_vector* nodo1;
 	int i;
@@ -189,11 +217,13 @@ int esCero(t_list* vec1){
 	return 1;
 }
 
-void inicializarFinish(ITEM_NIVEL* listaP, t_list* mat, t_list* finish){
-	ITEM_NIVEL* temp = listaP;
+void inicializarFinish(t_list* listaP, t_list* mat, t_list* finish) {
+	ITEM_NIVEL* temp;
 	t_list* request;
+	int i;
 
-	while (temp != NULL ) {
+	for (i = 0; i < list_size(listaP); i++) {
+		temp = list_get(listaP, i);
 
 		if ((temp->item_type == PERSONAJE_ITEM_TYPE) && (temp != NULL )) {
 
@@ -204,14 +234,31 @@ void inicializarFinish(ITEM_NIVEL* listaP, t_list* mat, t_list* finish){
 				list_add(finish, CrearNodoVector(temp->id, 0));
 			}
 		}
-		temp = temp->next;
 	}
-
 	list_destroy_and_destroy_elements(request, (void *) free);
+
+//	ITEM_NIVEL* temp = listaP;
+//	t_list* request;
+//
+//	while (temp != NULL ) {
+//
+//		if ((temp->item_type == PERSONAJE_ITEM_TYPE) && (temp != NULL )) {
+//
+//			request = obtenerAllocation(mat, temp->id);
+//			if (esCero(request)) {
+//				list_add(finish, CrearNodoVector(temp->id, 1));
+//			} else {
+//				list_add(finish, CrearNodoVector(temp->id, 0));
+//			}
+//		}
+//		temp = temp->next;
+//	}
+//
+//	list_destroy_and_destroy_elements(request, (void *) free);
 
 }
 
-int sumarAsiganadosPorRecurso(t_list* mat, char id_r){
+int sumarAsiganadosPorRecurso(t_list* mat, char id_r) {
 	int suma;
 	t_dl_celda* celda;
 	int i;
@@ -228,7 +275,7 @@ int sumarAsiganadosPorRecurso(t_list* mat, char id_r){
 
 }
 
-int obtenerFinishProceso(t_list* finish, char id_p){
+int obtenerFinishProceso(t_list* finish, char id_p) {
 
 	t_dl_vector* nodo;
 	int i;
@@ -241,7 +288,7 @@ int obtenerFinishProceso(t_list* finish, char id_p){
 	return -1;
 }
 
-void setFinishProceso(t_list* finish, char id_p, int  value){
+void setFinishProceso(t_list* finish, char id_p, int value) {
 
 	t_dl_vector* nodo;
 	int i;
@@ -253,14 +300,15 @@ void setFinishProceso(t_list* finish, char id_p, int  value){
 	}
 }
 
-t_list* deadlockDetection(ITEM_NIVEL* listaR, ITEM_NIVEL* listaP){
+t_list* deadlockDetection(t_list* listaR, t_list* listaP) {
 	t_list* finish = NULL;
 	t_list* request = NULL;
 	t_list* avaible = NULL;
 	t_list* work = NULL;
 	t_list* allocation = NULL;
-	t_list* matriz  = NULL;
-	ITEM_NIVEL* tempP = listaP;
+	t_list* matriz = NULL;
+	ITEM_NIVEL* tempP = NULL;
+	int i;
 
 	finish = list_create();
 	matriz = cargarMatriz(listaR, listaP);
@@ -269,18 +317,18 @@ t_list* deadlockDetection(ITEM_NIVEL* listaR, ITEM_NIVEL* listaP){
 
 	work = avaible;
 
-	while (tempP != NULL) {
+	for(i = 0; i < list_size(listaP); i++) {
+		tempP = list_get(listaP, i);
 		request = obtenerRequest(matriz, tempP->id);
 		allocation = obtenerAllocation(matriz, tempP->id);
-		int boolF = obtenerFinishProceso(finish, tempP->id) ;
+		int boolF = obtenerFinishProceso(finish, tempP->id);
 		int boolM = esMenorIgual(request, work);
 		if (!boolF && boolM) {
 			work = sumarVectores(work, allocation);
 			setFinishProceso(finish, tempP->id, 1);
 		}
-		tempP= tempP->next;
+//		tempP = tempP->next;
 	}
-
 
 //	list_destroy_and_destroy_elements(request, (void *) free);
 	list_destroy(request);
@@ -292,7 +340,7 @@ t_list* deadlockDetection(ITEM_NIVEL* listaR, ITEM_NIVEL* listaP){
 	return finish;
 }
 
-t_list* obtenerPersonajesEnDL(ITEM_NIVEL* listaR, ITEM_NIVEL* listaP) {
+t_list* obtenerPersonajesEnDL(t_list* listaR, t_list* listaP) {
 
 	t_list* finalizados = NULL;
 	t_list* bloqueados = list_create();
@@ -304,14 +352,12 @@ t_list* obtenerPersonajesEnDL(ITEM_NIVEL* listaR, ITEM_NIVEL* listaP) {
 		personaje = list_get(finalizados, i);
 
 		if (!(personaje->value)) {
-			list_add(bloqueados, CrearNodoVector(personaje->id, personaje->value));
+			list_add(bloqueados,
+					CrearNodoVector(personaje->id, personaje->value));
 		}
 	}
 
 	list_destroy_and_destroy_elements(finalizados, (void *) free);
 	return bloqueados;
 }
-
-
-
 

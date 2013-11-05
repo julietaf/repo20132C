@@ -53,9 +53,9 @@ int sockEscucha;
 int fil = 100, col = 100;
 //int fil, col;
 int orden = 0;
-ITEM_NIVEL* listaRecursos = NULL;
-ITEM_NIVEL* listaPersonajes = NULL;
-ITEM_NIVEL* listaEnemigos = NULL;
+t_list* listaRecursos = NULL;
+t_list* listaPersonajes = NULL;
+t_list* listaEnemigos = NULL;
 NIVEL_CONF *configObj;
 informacion_planificacion_t* configPlanificador;
 

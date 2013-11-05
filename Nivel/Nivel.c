@@ -9,6 +9,10 @@
 
 int main(void) {
 
+	listaRecursos = list_create();
+	listaPersonajes = list_create();
+	listaEnemigos = list_create();
+
 	configObj = inicializarCongiuracionNivel();
 	logFile = log_create(LOG_PATH, "ProcesoNivel", false,
 			log_level_from_string(configObj->logLevel));
@@ -117,7 +121,7 @@ void crearCajasConVector(char** array) {
 	int pos_y = atoi(array[4]);
 
 	if (pos_x <= col && pos_y <= fil) {
-		CrearCaja(&listaRecursos, id, pos_x, pos_y, instancia);
+		CrearCaja(listaRecursos, id, pos_x, pos_y, instancia);
 		log_info(logFile, "Se creo la caja:%c, cantidad:%d, Pos:(%d,%d)", id,
 				instancia, pos_x, pos_y);
 	} else {
@@ -327,7 +331,7 @@ void tratarNuevoPersonaje(char* data){
 
 	pId = data[0];
 	log_info(logFile, "Creando Personaje...");
-	CrearPersonaje(&listaPersonajes, pId, 0, 0, 1, orden);
+	CrearPersonaje(listaPersonajes, pId, 0, 0, 1, orden);
 	orden++;
 	dibujar();
 }
@@ -379,7 +383,7 @@ void tratarSolicitudRecurso(char* data){
 	personaje = personajeRecurso_deserializer(data);
 
 	if (personajeEnCaja(personaje->idPersonaje, personaje->idRecurso)) {
-		respuesta = darRecursoPersonaje(&listaPersonajes, &listaRecursos, personaje->idPersonaje,
+		respuesta = darRecursoPersonaje(listaPersonajes, listaRecursos, personaje->idPersonaje,
 				personaje->idRecurso);
 	} else {
 		log_error(logFile, "acceso incorrecto a caja de recurso: %s", personaje->idRecurso);
@@ -406,7 +410,7 @@ void tratarFinalizacionPersonaje(char* data){
 	pId = data[0];
 	log_info(logFile, "Matando personaje..");
 	adquiridos = getObjetosAdquiridosSerializable(listaPersonajes, pId);
-	matarPersonaje(&listaPersonajes, &listaRecursos, pId);
+	matarPersonaje(listaPersonajes, listaRecursos, pId);
 	mandarRecursosLiberados(adquiridos);
 	asignados = esperarRecursosAsignados();
 	actualizarEstado(asignados);
@@ -431,7 +435,7 @@ void notificarMuertePersonaje(char id, int causa) {
 	char* adqData = listaRecursos_serializer(adquiridos, &length);
 
 	char* data = malloc(h.length + length);
-	memcpy(data, configObj->nombre, h.length);
+	memcpy(data, id, h.length);
 	memcpy(data + h.length, adqData, length);
 	h.length += length;
 	sockets_send(plataformaSockfd, &h, data);
@@ -464,41 +468,41 @@ void notificacionBloqueo(char id){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void dibujar() {
-        log_info(logFile, "Dibujando...");
-        ITEM_NIVEL* tempI = NULL;
-        ITEM_NIVEL* tempR = NULL;
-        ITEM_NIVEL* tempP = NULL;
-        ITEM_NIVEL* tempE = NULL;
-
-        tempR = listaRecursos;
-        tempP = listaPersonajes;
-        tempE = listaEnemigos;
-
-        while (tempR != NULL ) {
-                CrearCaja(&tempI, tempR->id, tempR->posx, tempR->posy, tempR->quantity);
-                tempR = tempR->next;
-        }
-
-        while (tempP != NULL ) {
-                CrearPersonaje(&tempI, tempP->id, tempP->posx, tempP->posy, 1,
-                                tempP->socket);
-                tempP = tempP->next;
-        }
-
-        while (tempE != NULL ) {
-        	CrearEnemigo(&tempI, tempE->id, tempE->posx, tempE->posy, tempE->idEnemigo);
-        	log_debug(logFile, "Enemigo: %d, dibujado en posicion (%d, %d) ", tempE->idEnemigo, tempE->posx, tempE->posy);
-        	tempE = tempE->next;
-
-        }
-
-        if (nivel_gui_dibujar(tempI) == -1) {
-                log_info(logFile, "No se puedo dibujar el personaje");
-                //      EXIT_FAILURE;
-        } else {
-                log_info(logFile, "Dibujado...");
-        }
-        //TODO: Destroy
+//        log_info(logFile, "Dibujando...");
+//        ITEM_NIVEL* tempI = NULL;
+//        ITEM_NIVEL* tempR = NULL;
+//        ITEM_NIVEL* tempP = NULL;
+//        ITEM_NIVEL* tempE = NULL;
+//
+//        tempR = listaRecursos;
+//        tempP = listaPersonajes;
+//        tempE = listaEnemigos;
+//
+//        while (tempR != NULL ) {
+//                CrearCaja(&tempI, tempR->id, tempR->posx, tempR->posy, tempR->quantity);
+//                tempR = tempR->next;
+//        }
+//
+//        while (tempP != NULL ) {
+//                CrearPersonaje(&tempI, tempP->id, tempP->posx, tempP->posy, 1,
+//                                tempP->socket);
+//                tempP = tempP->next;
+//        }
+//
+//        while (tempE != NULL ) {
+//        	CrearEnemigo(&tempI, tempE->id, tempE->posx, tempE->posy, tempE->idEnemigo);
+//        	log_debug(logFile, "Enemigo: %d, dibujado en posicion (%d, %d) ", tempE->idEnemigo, tempE->posx, tempE->posy);
+//        	tempE = tempE->next;
+//
+//        }
+//
+//        if (nivel_gui_dibujar(tempI) == -1) {
+//                log_info(logFile, "No se puedo dibujar el personaje");
+//                //      EXIT_FAILURE;
+//        } else {
+//                log_info(logFile, "Dibujado...");
+//        }
+//        destroyItems(&tempI);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -585,7 +589,7 @@ void actualizarEstado(t_list* asignados) {
 	int i;
 	for (i = 0; i < asignados->elements_count; ++i) {
 		personaje = list_get(asignados, i);
-		darRecursoPersonaje(&listaPersonajes, &listaRecursos, personaje->idPersonaje, personaje->idRecurso);
+		darRecursoPersonaje(listaPersonajes, listaRecursos, personaje->idPersonaje, personaje->idRecurso);
 	}
 
 }
@@ -615,7 +619,7 @@ void agregarEnemigo(int idEnemigo, coordenada_t* posicion){
 		coordenadaRandomEjes(posicion, col, fil);
 	} while (!validarPosicionEnemigo(posicion) && !coordenadasIgualesInt(posicion, 0, 0));
 
-	CrearEnemigo(&listaEnemigos, '*', posicion->ejeX, posicion->ejeY, idEnemigo);
+	CrearEnemigo(listaEnemigos, '*', posicion->ejeX, posicion->ejeY, idEnemigo);
 	log_info(logFile, "Enemigo: %d, creado en posicion (%d, %d) ", idEnemigo, posicion->ejeX, posicion->ejeY);
 }
 
@@ -643,7 +647,8 @@ int hayPersonajes(){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void perseguirPersonaje(coordenada_t* posicion){
-	ITEM_NIVEL * temp = listaPersonajes;
+	ITEM_NIVEL * temp = NULL;
+	int i;
 	int distanciaMinima = 1000;
 	int xActual , yActual;
 	coordenada_t* cObjetivo = malloc(sizeof(coordenada_t));
@@ -652,7 +657,8 @@ void perseguirPersonaje(coordenada_t* posicion){
 	modificarCoordenada(limites, col, fil);
 
 	//Busco el personaje mas cercano
-	while(temp != NULL){
+	for(i = 0 ; i < list_size(listaPersonajes); i++){
+		temp = list_get(listaPersonajes, i);
 		coordenada_t* c = malloc(sizeof(coordenada_t));
 		modificarCoordenada(c, temp->posx, temp->posy );
 		int distancia = obtenerDistancia(c, posicion);
@@ -661,7 +667,7 @@ void perseguirPersonaje(coordenada_t* posicion){
 			modificarCoordenada(cObjetivo, c->ejeX, c->ejeY);
 		}
 		free(c);
-		temp = temp->next;
+
 	}
 
 	xActual = posicion->ejeX;
@@ -677,8 +683,9 @@ void perseguirPersonaje(coordenada_t* posicion){
 	}
 
 	//Si toco un personaje lo mato
-	temp = listaPersonajes;
-	while (temp != NULL){
+	temp = NULL;
+	for(i = 0 ; i < list_size(listaPersonajes); i++){
+		temp = list_get(listaPersonajes, i);
 		if (coordenadasIgualesInt(posicion, temp->posx, temp->posy)) {
 			notificarMuertePersonaje(temp->id, VICTIMA_ENEMIGO);
 		}
@@ -725,15 +732,17 @@ int validarPosicionesEnemigo(t_list* bufferMovimiento){
 }
 
 int validarPosicionEnemigo(coordenada_t* posicion){
-	ITEM_NIVEL * temp = listaRecursos;
+	int i;
+	ITEM_NIVEL * temp = NULL;
 	coordenada_t* posCaja;
-	while (temp != NULL ){
+	for(i = 0 ; i < list_size(listaPersonajes); i++) {
+		temp = list_get(listaRecursos, i);
 		posCaja = obtenerCoordenadas(listaRecursos, temp->id);
 		if (coordenadasIguales(posCaja, posicion)) {
 			return 0;
 		}
 		free(posCaja);
-		temp = temp->next;
+//		temp = temp->next;
 	}
 	return 1;
 
