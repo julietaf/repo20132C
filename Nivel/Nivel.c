@@ -21,13 +21,17 @@ int main(void) {
 	inicializarConfiguracionCajas();
 	nivel_gui_dibujar(listaRecursos, configObj->nombre);
 	inicializarSockEscucha();
-//	inicializarConexionPlataforma();
-	log_info(logFile, "Esperando conexiones en ip: %s port: %s", configObj->localhostaddr, configObj->localhostport);
+	inicializarConexionPlataforma();
+	log_info(logFile, "Esperando conexiones en ip: %s port: %s",
+			configObj->localhostaddr, configObj->localhostport);
 //	crearHiloEnemigo();
 	pthread_t hEnemigo;
 	pthread_create(&hEnemigo, NULL, (void*) enemigo, NULL );
+	while (1){
+		atenderMensajePlanificador(plataformaSockfd);
+	}
 	//TODO: MUchas muy importantes cosa//
-	pthread_join(hEnemigo, (void **)NULL);
+	pthread_join(hEnemigo, (void **) NULL );
 	return EXIT_SUCCESS;
 }
 
@@ -38,7 +42,8 @@ NIVEL_CONF* inicializarCongiuracionNivel() {
 	NIVEL_CONF *configObj = malloc(sizeof(NIVEL_CONF));
 
 	if (config_has_property(conF, "Nombre")) {
-		configObj->nombre =malloc(strlen(config_get_string_value(conF, "Nombre")) + 1);
+		configObj->nombre = malloc(
+				strlen(config_get_string_value(conF, "Nombre")) + 1);
 		strcpy(configObj->nombre, config_get_string_value(conF, "Nombre"));
 	}
 	if (config_has_property(conF, "TiempoChequeoDeadlock")) {
@@ -84,7 +89,8 @@ void inicializarInterfazGrafica() {
 	if (nivel_gui_get_area_nivel(&fil, &col) == -1) {
 		log_error(logFile, "No se pudo inicializar el area del nivel");
 	}
-	log_info(logFile, "Interfaz grafica inicializada, filas: %d, columnas: %d", fil, col);
+	log_info(logFile, "Interfaz grafica inicializada, filas: %d, columnas: %d",
+			fil, col);
 
 }
 
@@ -161,7 +167,7 @@ void inicializarConexionPlataforma() {
 	plataformaSockfd = conectarOrquestador();
 	hacerHandshake(plataformaSockfd);
 	enviarDatosAlgoritmo();
-	recibirDatosPlanificador();
+//	recibirDatosPlanificador();
 
 }
 
@@ -212,23 +218,21 @@ void hacerHandshake(int sockfdReceptor) {
 void enviarDatosAlgoritmo() {
 	header_t h;
 	int16_t lenght;
-	informacion_planificacion_t* datosAlgoritmo =malloc(sizeof(informacion_planificacion_t));
+	informacion_planificacion_t* datosAlgoritmo = malloc(
+			sizeof(informacion_planificacion_t));
 	char* data;
 
 	obtenerDatosAlgorimo(datosAlgoritmo);
 	data = informacionPlanificacion_serializer(datosAlgoritmo, &lenght);
 
 	h.type = NOTIFICAR_ALGORITMO_PLANIFICACION;
-	h.length  = lenght;
+	h.length = lenght;
 
 	sockets_send(plataformaSockfd, &h, data);
 
 	free(data);
 
-
 }
-
-
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -302,24 +306,27 @@ int validarRecive(int sockfd, header_t* h) {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void obtenerDatosAlgorimo(informacion_planificacion_t* datosAlgoritmo){
+void obtenerDatosAlgorimo(informacion_planificacion_t* datosAlgoritmo) {
 	t_config* conF = config_create(CONFIG_PATH);
 
-	if(config_has_property(conF, "Nombre")){
-		datosAlgoritmo->nombreNivel = malloc(strlen(config_get_string_value(conF, "Nombre")) + 1);
-		strcpy(datosAlgoritmo->nombreNivel, config_get_string_value(conF, "Nombre"));
+	if (config_has_property(conF, "Nombre")) {
+		datosAlgoritmo->nombreNivel = malloc(
+				strlen(config_get_string_value(conF, "Nombre")) + 1);
+		strcpy(datosAlgoritmo->nombreNivel,
+				config_get_string_value(conF, "Nombre"));
 	}
 
-	if(config_has_property(conF, "algoritmo")){
+	if (config_has_property(conF, "algoritmo")) {
 		char* algoritmo = config_get_string_value(conF, "algoritmo");
-		datosAlgoritmo->algoritmo = strcmp("RR", algoritmo) == 0 ? ROUND_ROBIN : SRDF;
+		datosAlgoritmo->algoritmo =
+				strcmp("RR", algoritmo) == 0 ? ROUND_ROBIN : SRDF;
 	}
 
-	if(config_has_property(conF, "quantum")){
+	if (config_has_property(conF, "quantum")) {
 		datosAlgoritmo->quantum = config_get_int_value(conF, "quantum");
 	}
 
-	if(config_has_property(conF, "retardo")){
+	if (config_has_property(conF, "retardo")) {
 		datosAlgoritmo->retardo = config_get_int_value(conF, "retardo");
 	}
 
@@ -327,7 +334,7 @@ void obtenerDatosAlgorimo(informacion_planificacion_t* datosAlgoritmo){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void tratarNuevoPersonaje(char* data){
+void tratarNuevoPersonaje(char* data) {
 	char pId;
 
 	pId = data[0];
@@ -339,7 +346,7 @@ void tratarNuevoPersonaje(char* data){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void tratarSolicitudUbicacionCaja(char* data){
+void tratarSolicitudUbicacionCaja(char* data) {
 	char rId = data[0];
 	coordenada_t* coord;
 	header_t h;
@@ -361,13 +368,13 @@ void tratarSolicitudUbicacionCaja(char* data){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void tratarMovimiento(char* data){
+void tratarMovimiento(char* data) {
 	char pId;
 	coordenada_t* pCoordenada;
 	int offset = sizeof(char);
 
 	pId = data[0];
-	pCoordenada = coordenadas_deserializer(data+offset);
+	pCoordenada = coordenadas_deserializer(data + offset);
 
 	MoverPersonaje(listaPersonajes, pId, pCoordenada->ejeX, pCoordenada->ejeY);
 
@@ -376,7 +383,7 @@ void tratarMovimiento(char* data){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void tratarSolicitudRecurso(char* data){
+void tratarSolicitudRecurso(char* data) {
 
 	personaje_recurso_t* personaje;
 	int respuesta;
@@ -384,14 +391,15 @@ void tratarSolicitudRecurso(char* data){
 	personaje = personajeRecurso_deserializer(data);
 
 	if (personajeEnCaja(personaje->idPersonaje, personaje->idRecurso)) {
-		respuesta = darRecursoPersonaje(listaPersonajes, listaRecursos, personaje->idPersonaje,
-				personaje->idRecurso);
+		respuesta = darRecursoPersonaje(listaPersonajes, listaRecursos,
+				personaje->idPersonaje, personaje->idRecurso);
 	} else {
-		log_error(logFile, "acceso incorrecto a caja de recurso: %s", personaje->idRecurso);
+		log_error(logFile, "acceso incorrecto a caja de recurso: %s",
+				personaje->idRecurso);
 	}
 	if (respuesta) {
-		log_info(logFile, "Se le asigno el recurso: %c, al personaje: %c", personaje->idRecurso,
-				personaje->idPersonaje);
+		log_info(logFile, "Se le asigno el recurso: %c, al personaje: %c",
+				personaje->idRecurso, personaje->idPersonaje);
 		notificacionDarRecurso(personaje->idPersonaje);
 	} else {
 		log_info(logFile, "Se bloqueo el personaje: %c, al pedir el recruso %c",
@@ -402,7 +410,7 @@ void tratarSolicitudRecurso(char* data){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void tratarFinalizacionPersonaje(char* data){
+void tratarFinalizacionPersonaje(char* data) {
 //  TODO: REvisar con plataforma
 	char pId;
 	t_list* adquiridos = NULL;
@@ -450,7 +458,7 @@ void notificarMuertePersonaje(char id, int causa) {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void notificacionDarRecurso(char id){
+void notificacionDarRecurso(char id) {
 	header_t header;
 	header.type = OTORGAR_RECURSO;
 	header.length = 0;
@@ -459,7 +467,7 @@ void notificacionDarRecurso(char id){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void notificacionBloqueo(char id){
+void notificacionBloqueo(char id) {
 	header_t header;
 	header.type = NEGAR_RECURSO;
 	header.length = 0;
@@ -469,31 +477,31 @@ void notificacionBloqueo(char id){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void dibujar() {
-        t_list* tempI;
+	t_list* tempI;
 
-        tempI = list_create();
+	tempI = list_create();
 
-        list_add_all(tempI, listaRecursos);
-        list_add_all(tempI, listaPersonajes);
-        list_add_all(tempI, listaEnemigos);
+	list_add_all(tempI, listaRecursos);
+	list_add_all(tempI, listaPersonajes);
+	list_add_all(tempI, listaEnemigos);
 
-        if (nivel_gui_dibujar(tempI, configObj->nombre) == -1) {
-                log_info(logFile, "No se puedo dibujar el personaje");
-                //      EXIT_FAILURE;
-        } else {
-                log_info(logFile, "Dibujado...");
-        }
+	if (nivel_gui_dibujar(tempI, configObj->nombre) == -1) {
+		log_info(logFile, "No se puedo dibujar el personaje");
+		//      EXIT_FAILURE;
+	} else {
+		log_info(logFile, "Dibujado...");
+	}
 //        destroyItems(&tempI);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void crearHiloEnemigo (){
+void crearHiloEnemigo() {
 
 	int i = 0;
 	for (i = 0; i < configObj->enemigos; i++) {
 		pthread_t hEnemigo;
-		pthread_create(&hEnemigo, NULL, (void*) enemigo,  (void*)i );
+		pthread_create(&hEnemigo, NULL, (void*) enemigo, (void*) i);
 		sleep(1);
 	}
 }
@@ -560,7 +568,6 @@ t_list* esperarRecursosAsignados() {
 	return asignados;
 }
 
-
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void actualizarEstado(t_list* asignados) {
@@ -570,7 +577,8 @@ void actualizarEstado(t_list* asignados) {
 	int i;
 	for (i = 0; i < asignados->elements_count; ++i) {
 		personaje = list_get(asignados, i);
-		darRecursoPersonaje(listaPersonajes, listaRecursos, personaje->idPersonaje, personaje->idRecurso);
+		darRecursoPersonaje(listaPersonajes, listaRecursos,
+				personaje->idPersonaje, personaje->idRecurso);
 	}
 
 }
@@ -579,39 +587,42 @@ void actualizarEstado(t_list* asignados) {
 //-----------------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void enemigo (int idEnemigo){
+void enemigo(int idEnemigo) {
 //	t_list* bufferMovimiento = NULL;
 	t_list* bufferMovimiento = list_create();
 	coordenada_t* posicion = malloc(sizeof(coordenada_t));
 	agregarEnemigo(idEnemigo, posicion);
-	while (1){
+	while (1) {
 		cazarPersonajes(bufferMovimiento, posicion);
-		moverEnemigo(listaEnemigos, idEnemigo, posicion->ejeX, posicion->ejeY );
+		moverEnemigo(listaEnemigos, idEnemigo, posicion->ejeX, posicion->ejeY);
 		dibujar();
-		log_info(logFile, "Enemigo: %d,se movio a posicion (%d, %d) ", idEnemigo, posicion->ejeX, posicion->ejeY);
+		log_info(logFile, "Enemigo: %d,se movio a posicion (%d, %d) ",
+				idEnemigo, posicion->ejeX, posicion->ejeY);
 	}
 
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void agregarEnemigo(int idEnemigo, coordenada_t* posicion){
+void agregarEnemigo(int idEnemigo, coordenada_t* posicion) {
 	do {
 		coordenadaRandomEjes(posicion, col, fil);
-	} while (!validarPosicionEnemigo(posicion) && !coordenadasIgualesInt(posicion, 0, 0));
+	} while (!validarPosicionEnemigo(posicion)
+			&& !coordenadasIgualesInt(posicion, 0, 0));
 
 	CrearEnemigo(listaEnemigos, '*', posicion->ejeX, posicion->ejeY, idEnemigo);
-	log_info(logFile, "Enemigo: %d, creado en posicion (%d, %d) ", idEnemigo, posicion->ejeX, posicion->ejeY);
+	log_info(logFile, "Enemigo: %d, creado en posicion (%d, %d) ", idEnemigo,
+			posicion->ejeX, posicion->ejeY);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void cazarPersonajes( t_list* bufferMovimiento, coordenada_t* posicion){
+void cazarPersonajes(t_list* bufferMovimiento, coordenada_t* posicion) {
 //	sleep(configObj->sleepEnemigos);
 	sleep(1);
-	if(hayPersonajes()){
+	if (hayPersonajes()) {
 		perseguirPersonaje(posicion);
-	}else{
+	} else {
 
 		movimientoDeEspera(bufferMovimiento, posicion);
 	}
@@ -620,30 +631,30 @@ void cazarPersonajes( t_list* bufferMovimiento, coordenada_t* posicion){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-int hayPersonajes(){
+int hayPersonajes() {
 	int ret = !list_is_empty(listaPersonajes);
 	return ret;
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void perseguirPersonaje(coordenada_t* posicion){
+void perseguirPersonaje(coordenada_t* posicion) {
 	ITEM_NIVEL * temp = NULL;
 	int i;
 	int distanciaMinima = 1000;
-	int xActual , yActual;
+	int xActual, yActual;
 	coordenada_t* cObjetivo = malloc(sizeof(coordenada_t));
 	coordenada_t* obstaculo = malloc(sizeof(coordenada_t));
 	coordenada_t* limites = malloc(sizeof(coordenada_t));
 	modificarCoordenada(limites, col, fil);
 
 	//Busco el personaje mas cercano
-	for(i = 0 ; i < list_size(listaPersonajes); i++){
+	for (i = 0; i < list_size(listaPersonajes); i++) {
 		temp = list_get(listaPersonajes, i);
 		coordenada_t* c = malloc(sizeof(coordenada_t));
-		modificarCoordenada(c, temp->posx, temp->posy );
+		modificarCoordenada(c, temp->posx, temp->posy);
 		int distancia = obtenerDistancia(c, posicion);
-		if (distancia < distanciaMinima){
+		if (distancia < distanciaMinima) {
 			distanciaMinima = distancia;
 			modificarCoordenada(cObjetivo, c->ejeX, c->ejeY);
 		}
@@ -665,13 +676,12 @@ void perseguirPersonaje(coordenada_t* posicion){
 
 	//Si toco un personaje lo mato
 	temp = NULL;
-	for(i = 0 ; i < list_size(listaPersonajes); i++){
+	for (i = 0; i < list_size(listaPersonajes); i++) {
 		temp = list_get(listaPersonajes, i);
 		if (coordenadasIgualesInt(posicion, temp->posx, temp->posy)) {
 			notificarMuertePersonaje(temp->id, VICTIMA_ENEMIGO);
 		}
 	}
-
 
 	//Frees
 	free(limites);
@@ -681,13 +691,13 @@ void perseguirPersonaje(coordenada_t* posicion){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void movimientoDeEspera(t_list* bufferMovimiento, coordenada_t* posicion){
+void movimientoDeEspera(t_list* bufferMovimiento, coordenada_t* posicion) {
 
-	if (list_is_empty(bufferMovimiento)){
-		do{
+	if (list_is_empty(bufferMovimiento)) {
+		do {
 			//TODO: aloca memoria
-		movimientoLRandom(posicion, bufferMovimiento);
-		}while(!validarPosicionesEnemigo(bufferMovimiento));
+			movimientoLRandom(posicion, bufferMovimiento);
+		} while (!validarPosicionesEnemigo(bufferMovimiento));
 	}
 
 	coordenada_t* temp = list_remove(bufferMovimiento, 0);
@@ -697,14 +707,26 @@ void movimientoDeEspera(t_list* bufferMovimiento, coordenada_t* posicion){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-int validarPosicionesEnemigo(t_list* bufferMovimiento){
+int validarPosicionesEnemigo(t_list* bufferMovimiento) {
 	int i, r;
 	for (i = 0; i < list_size(bufferMovimiento); i++) {
-		coordenada_t* coordenadaTemp ;//= malloc(sizeof(coordenada_t));
+		coordenada_t* coordenadaTemp; //= malloc(sizeof(coordenada_t));
 		coordenadaTemp = list_get(bufferMovimiento, i);
 		r = validarPosicionEnemigo(coordenadaTemp);
 //		free (coordenadaTemp);
-		if (!r){
+		if (!r) {
+			return 0;
+		}
+		if (coordenadaTemp->ejeX < 0 && coordenadaTemp->ejeX > col) {
+			log_warning(logFile,
+					"Posicion invalida (%d,%d), supera los limites",
+					coordenadaTemp->ejeX, coordenadaTemp->ejeY);
+			return 0;
+		}
+		if (coordenadaTemp->ejeY < 0 && coordenadaTemp->ejeY > fil) {
+			log_warning(logFile,
+					"Posicion invalida (%d,%d), supera los limites",
+					coordenadaTemp->ejeX, coordenadaTemp->ejeY);
 			return 0;
 		}
 	}
@@ -714,22 +736,20 @@ int validarPosicionesEnemigo(t_list* bufferMovimiento){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-int validarPosicionEnemigo(coordenada_t* posicion){
+int validarPosicionEnemigo(coordenada_t* posicion) {
 	int i;
 	ITEM_NIVEL * temp = NULL;
 //	coordenada_t* posCaja;
-	for(i = 0 ; i < list_size(listaRecursos); i++) {
+	for (i = 0; i < list_size(listaRecursos); i++) {
 		temp = list_get(listaRecursos, i);
 //		posCaja = obtenerCoordenadas(listaRecursos, temp->id);
 		if (coordenadasIgualesInt(posicion, temp->posx, temp->posy)) {
+			log_warning(logFile,
+					"Posicion invalida (%d,%d), coincide con una caja",
+					temp->posx, temp->posy);
 			return 0;
 		}
-		if (temp->posx < 0 && temp->posx > col){
-			return 0;
-		}
-		if (temp->posy < 0 && temp->posy > fil){
-			return 0;
-		}
+
 //		free(posCaja);
 //		temp = temp->next;
 	}
@@ -740,7 +760,7 @@ int validarPosicionEnemigo(coordenada_t* posicion){
 //-----------------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void deadLock (){
+void deadLock() {
 	//TODO:
 }
 
