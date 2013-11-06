@@ -13,9 +13,6 @@ void moverPersonaje(datos_planificador_t *datos);
 void seleccionarPorRoundRobin(datos_planificador_t *datosPlan);
 void seleccionarPorSRDF(datos_planificador_t *datos);
 void enviarTurnoConcedido(datos_personaje_t *personaje);
-void notificarNivel(datos_planificador_t *planificador, int type,
-		int16_t length, char *data);
-datos_personaje_t *buscarPersonajePorSockfd(t_queue *cola, int sockfd);
 void atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje);
 void atenderPedidoNivel(datos_planificador_t *datos);
 void gestionarUbicacionCaja(datos_planificador_t *datosPlan,
@@ -108,10 +105,30 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 		queue_push(datosPlan->personajesListos, personaje);
 }
 
-void seleccionarPorSRDF(datos_planificador_t *datos) {
-//	datos_personaje_t *personaje = seleccionarCaminoMasCorto(
-//			datos.personajesListos);
+void seleccionarPorSRDF(datos_planificador_t *datosPlan) {
+	datos_personaje_t *personaje = seleccionarCaminoMasCorto(
+			datosPlan->personajesListos);
+	header_t header;
 
+	enviarTurnoConcedido(personaje);
+	recv(personaje->sockfd, &header, sizeof(header_t), MSG_WAITALL);
+	char *data = malloc(header.length);
+	recv(personaje->sockfd, data, header.length, MSG_WAITALL);
+
+	while (header.type != SOLICITAR_RECURSO) {
+		switch (header.type) {
+		case UBICACION_CAJA:
+			reenviarUbicacionCaja(datosPlan, personaje, &header, data);
+			gestionarUbicacionCaja(datosPlan, personaje);
+			break;
+		case NOTIFICACION_MOVIMIENTO:
+			reenviarNotificacionMovimiento(datosPlan, personaje, &header, data);
+			break;
+		}
+	}
+
+	sockets_send(datosPlan->sockfdNivel, &header, data);
+	gestionarSolicitudRecurso(datosPlan, personaje);
 }
 
 void enviarTurnoConcedido(datos_personaje_t *personaje) {
@@ -119,19 +136,6 @@ void enviarTurnoConcedido(datos_personaje_t *personaje) {
 	header.type = TURNO_CONCEDIDO;
 	header.length = 0;
 	sockets_send(personaje->sockfd, &header, '\0');
-}
-
-void notificarNivel(datos_planificador_t *planificador, int type,
-		int16_t length, char *data) {
-
-}
-
-datos_personaje_t *buscarPersonajePorSockfd(t_queue *cola, int sockfd) {
-	int _is_personaje(datos_personaje_t *datos) {
-		return datos->sockfd == sockfd;
-	}
-
-	return list_find(cola->elements, (void *) _is_personaje);
 }
 
 void atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje) {
