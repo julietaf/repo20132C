@@ -9,6 +9,7 @@
 #define PLANIFICADOR_H_
 
 #include "Orquestador.h"
+#include <commons/geospatial.h>
 
 void planificador(datos_planificador_t *datos);
 
