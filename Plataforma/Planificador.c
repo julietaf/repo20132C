@@ -9,7 +9,7 @@
 
 void atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 		datos_planificador_t *datos);
-void seleccionarPersonaje(datos_planificador_t *datos);
+void moverPersonaje(datos_planificador_t *datos);
 void seleccionarPorRoundRobin(datos_planificador_t *datosPlan);
 void seleccionarPorSRDF(datos_planificador_t *datos);
 void enviarTurnoConcedido(datos_personaje_t *personaje);
@@ -19,9 +19,16 @@ datos_personaje_t *buscarPersonajePorSockfd(t_queue *cola, int sockfd);
 void atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje);
 void atenderPedidoNivel(datos_planificador_t *datos);
 void gestionarUbicacionCaja(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje, char *objetivo);
+		datos_personaje_t *personaje);
 void reenviarUbicacionCaja(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje, header_t *header, char *data);
+void reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje, header_t *header, char *data);
+void gestionarNotificacionMovimiento(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje);
+void gestionarSolicitudRecurso(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje);
+datos_personaje_t *seleccionarCaminoMasCorto(t_queue *personajes);
 
 void planificador(datos_planificador_t *datos) {
 	fd_set bagEscucha;
@@ -39,7 +46,7 @@ void planificador(datos_planificador_t *datos) {
 		else if (retval) //Hay un pedido de los procesos conectados
 			atenderPedidoPlanificador(&bagEscucha, sockfdMax, datos);
 		else if (!queue_is_empty(datos->personajesListos)) //Se produjo el timeout
-			seleccionarPersonaje(datos);
+			moverPersonaje(datos);
 	}
 }
 
@@ -56,7 +63,7 @@ void atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 	}
 }
 
-void seleccionarPersonaje(datos_planificador_t *datos) {
+void moverPersonaje(datos_planificador_t *datos) {
 	switch (datos->algoritmo) {
 	case ROUND_ROBIN:
 		seleccionarPorRoundRobin(datos);
@@ -82,14 +89,15 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 		switch (header.type) {
 		case UBICACION_CAJA:
 			reenviarUbicacionCaja(datosPlan, personaje, &header, data);
-			gestionarUbicacionCaja(datosPlan, personaje, data);
+			gestionarUbicacionCaja(datosPlan, personaje);
 			break;
 		case NOTIFICACION_MOVIMIENTO:
 			quantumPersonaje--;
-			sockets_send(datosPlan->sockfdNivel, &header, data);
+			reenviarNotificacionMovimiento(datosPlan, personaje, &header, data);
 			break;
 		case SOLICITAR_RECURSO:
 			sockets_send(datosPlan->sockfdNivel, &header, data);
+			gestionarSolicitudRecurso(datosPlan, personaje);
 			break;
 		}
 
@@ -101,6 +109,8 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 }
 
 void seleccionarPorSRDF(datos_planificador_t *datos) {
+//	datos_personaje_t *personaje = seleccionarCaminoMasCorto(
+//			datos.personajesListos);
 
 }
 
@@ -155,7 +165,7 @@ void reenviarUbicacionCaja(datos_planificador_t *datosPlan,
 }
 
 void gestionarUbicacionCaja(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje, char *objetivo) {
+		datos_personaje_t *personaje) {
 	header_t header;
 
 	recv(datosPlan->sockfdNivel, &header, sizeof(header), MSG_WAITALL);
@@ -167,4 +177,70 @@ void gestionarUbicacionCaja(datos_planificador_t *datosPlan,
 		sockets_send(personaje->sockfd, &header, respuesta);
 		free(respuesta);
 	}
+}
+
+void reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje, header_t *header, char *data) {
+	personaje->ubicacionActual = coordenadas_deserializer(data + sizeof(char));
+	sockets_send(datosPlan->sockfdNivel, header, data);
+}
+
+void gestionarNotificacionMovimiento(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje) {
+	header_t header;
+
+	recv(datosPlan->sockfdNivel, &header, sizeof(header), MSG_WAITALL);
+
+	if (header.type == NOTIFICACION_MOVIMIENTO) {
+		//TODO:Confirmación de movimiento realizado.
+	}
+}
+
+void gestionarSolicitudRecurso(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje) {
+	header_t header;
+
+	recv(datosPlan->sockfdNivel, &header, sizeof(header), MSG_WAITALL);
+
+	switch (header.type) {
+	case OTORGAR_RECURSO:
+		coordenadas_destroy(personaje->coordObjetivo);
+		personaje->coordObjetivo = NULL;
+		break;
+	case NEGAR_RECURSO:
+//		pthread_mutex_lock(datosPlan->mutexColas);
+		queue_push(datosPlan->personajesBloqueados, personaje);
+//		pthread_mutex_unlock(datosPlan->mutexColas);
+		break;
+	}
+}
+
+datos_personaje_t *seleccionarCaminoMasCorto(t_queue *colaPersonajes) {
+	t_list *listaPersonajes = colaPersonajes->elements;
+	int i, flag = 0, index = 0;
+	datos_personaje_t *personaje, *personajeElegido;
+
+	for (i = 0; list_size(listaPersonajes) < i; i++) {
+		personaje = list_get(listaPersonajes, i);
+
+		if (personaje->coordObjetivo != NULL ) {
+			if (flag) {
+				if (obtenerDistancia(personaje->ubicacionActual,
+						personaje->coordObjetivo)
+						< obtenerDistancia(personajeElegido->ubicacionActual,
+								personajeElegido->coordObjetivo)) {
+					personajeElegido = personaje;
+					index = i;
+				}
+			} else {
+				personajeElegido = personaje;
+				flag = 1;
+				index = i;
+			}
+		}
+	}
+
+	list_remove(listaPersonajes, index);
+
+	return personajeElegido;
 }

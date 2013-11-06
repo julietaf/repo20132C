@@ -46,6 +46,7 @@ typedef struct {
 	int sockfd;
 	char objetivo;
 	coordenada_t *coordObjetivo;
+	coordenada_t *ubicacionActual;
 } datos_personaje_t;
 
 configuracion_plataforma_t *configuracion;
