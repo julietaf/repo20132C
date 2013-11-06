@@ -17,9 +17,9 @@ int main(void) {
 	logFile = log_create(LOG_PATH, "ProcesoNivel", false,
 			log_level_from_string(configObj->logLevel));
 	separador_log(configObj->nombre);
-//	inicializarInterfazGrafica();
+	inicializarInterfazGrafica();
 	inicializarConfiguracionCajas();
-//	nivel_gui_dibujar(listaRecursos);
+	nivel_gui_dibujar(listaRecursos, configObj->nombre);
 	inicializarSockEscucha();
 //	inicializarConexionPlataforma();
 	log_info(logFile, "Esperando conexiones en ip: %s port: %s", configObj->localhostaddr, configObj->localhostport);
@@ -38,6 +38,7 @@ NIVEL_CONF* inicializarCongiuracionNivel() {
 	NIVEL_CONF *configObj = malloc(sizeof(NIVEL_CONF));
 
 	if (config_has_property(conF, "Nombre")) {
+		configObj->nombre =malloc(strlen(config_get_string_value(conF, "Nombre")) + 1);
 		strcpy(configObj->nombre, config_get_string_value(conF, "Nombre"));
 	}
 	if (config_has_property(conF, "TiempoChequeoDeadlock")) {
@@ -435,7 +436,7 @@ void notificarMuertePersonaje(char id, int causa) {
 	char* adqData = listaRecursos_serializer(adquiridos, &length);
 
 	char* data = malloc(h.length + length);
-	memcpy(data, id, h.length);
+	memcpy(data, &id, h.length);
 	memcpy(data + h.length, adqData, length);
 	h.length += length;
 	sockets_send(plataformaSockfd, &h, data);
@@ -468,40 +469,20 @@ void notificacionBloqueo(char id){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void dibujar() {
-//        log_info(logFile, "Dibujando...");
-//        ITEM_NIVEL* tempI = NULL;
-//        ITEM_NIVEL* tempR = NULL;
-//        ITEM_NIVEL* tempP = NULL;
-//        ITEM_NIVEL* tempE = NULL;
-//
-//        tempR = listaRecursos;
-//        tempP = listaPersonajes;
-//        tempE = listaEnemigos;
-//
-//        while (tempR != NULL ) {
-//                CrearCaja(&tempI, tempR->id, tempR->posx, tempR->posy, tempR->quantity);
-//                tempR = tempR->next;
-//        }
-//
-//        while (tempP != NULL ) {
-//                CrearPersonaje(&tempI, tempP->id, tempP->posx, tempP->posy, 1,
-//                                tempP->socket);
-//                tempP = tempP->next;
-//        }
-//
-//        while (tempE != NULL ) {
-//        	CrearEnemigo(&tempI, tempE->id, tempE->posx, tempE->posy, tempE->idEnemigo);
-//        	log_debug(logFile, "Enemigo: %d, dibujado en posicion (%d, %d) ", tempE->idEnemigo, tempE->posx, tempE->posy);
-//        	tempE = tempE->next;
-//
-//        }
-//
-//        if (nivel_gui_dibujar(tempI) == -1) {
-//                log_info(logFile, "No se puedo dibujar el personaje");
-//                //      EXIT_FAILURE;
-//        } else {
-//                log_info(logFile, "Dibujado...");
-//        }
+        t_list* tempI;
+
+        tempI = list_create();
+
+        list_add_all(tempI, listaRecursos);
+        list_add_all(tempI, listaPersonajes);
+        list_add_all(tempI, listaEnemigos);
+
+        if (nivel_gui_dibujar(tempI, configObj->nombre) == -1) {
+                log_info(logFile, "No se puedo dibujar el personaje");
+                //      EXIT_FAILURE;
+        } else {
+                log_info(logFile, "Dibujado...");
+        }
 //        destroyItems(&tempI);
 }
 
@@ -606,7 +587,7 @@ void enemigo (int idEnemigo){
 	while (1){
 		cazarPersonajes(bufferMovimiento, posicion);
 		moverEnemigo(listaEnemigos, idEnemigo, posicion->ejeX, posicion->ejeY );
-//		dibujar();
+		dibujar();
 		log_info(logFile, "Enemigo: %d,se movio a posicion (%d, %d) ", idEnemigo, posicion->ejeX, posicion->ejeY);
 	}
 
@@ -640,7 +621,7 @@ void cazarPersonajes( t_list* bufferMovimiento, coordenada_t* posicion){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 int hayPersonajes(){
-	int ret = listaPersonajes != NULL ? 1 : 0;
+	int ret = !list_is_empty(listaPersonajes);
 	return ret;
 }
 
@@ -731,17 +712,25 @@ int validarPosicionesEnemigo(t_list* bufferMovimiento){
 	return 1;
 }
 
+//-----------------------------------------------------------------------------------------------------------------------------
+
 int validarPosicionEnemigo(coordenada_t* posicion){
 	int i;
 	ITEM_NIVEL * temp = NULL;
-	coordenada_t* posCaja;
-	for(i = 0 ; i < list_size(listaPersonajes); i++) {
+//	coordenada_t* posCaja;
+	for(i = 0 ; i < list_size(listaRecursos); i++) {
 		temp = list_get(listaRecursos, i);
-		posCaja = obtenerCoordenadas(listaRecursos, temp->id);
-		if (coordenadasIguales(posCaja, posicion)) {
+//		posCaja = obtenerCoordenadas(listaRecursos, temp->id);
+		if (coordenadasIgualesInt(posicion, temp->posx, temp->posy)) {
 			return 0;
 		}
-		free(posCaja);
+		if (temp->posx < 0 && temp->posx > col){
+			return 0;
+		}
+		if (temp->posy < 0 && temp->posy > fil){
+			return 0;
+		}
+//		free(posCaja);
 //		temp = temp->next;
 	}
 	return 1;

@@ -10,6 +10,7 @@
 // FUNCIONES PORPIETARIAS
 //----------------------------------------------------------------------------------------------
 ITEM_NIVEL* _search_item_by_id(t_list* items, char id);
+ITEM_NIVEL* _search_item_by_id_enemigo(t_list* items, int id);
 
 void CrearItem(t_list* ListaItems, char id, int x, int y, char tipo, int cant,
 		int socket, int idEnemigo) {
@@ -50,7 +51,7 @@ void CrearCaja(t_list* ListaItems, char id, int x, int y, int cant) {
 }
 
 void CrearEnemigo(t_list* ListaItems, char id, int x, int y, int idEnemigo) {
-	CrearItem(ListaItems, id, x, y, PERSONAJE_ITEM_TYPE, -1, -1, idEnemigo);
+	CrearItem(ListaItems, id, x, y, ENEMIGO_ITEM_TYPE, -1, -1, idEnemigo);
 }
 
 void BorrarItem(t_list* items, char id) {
@@ -96,16 +97,13 @@ void MoverPersonaje(t_list* items, char id, int x, int y) {
 
 void moverEnemigo(t_list* ListaItems, int idEnemigo, int x, int y) {
 
-//	ITEM_NIVEL * temp;
-//	temp = ListaItems;
-//
-//	while ((temp != NULL )&& (temp->idEnemigo != idEnemigo)){
-//	temp = temp->next;
-//}
-//	if ((temp != NULL )&& (temp->idEnemigo == idEnemigo)){
-//	temp->posx = x;
-//	temp->posy = y;
-//}
+	ITEM_NIVEL * temp = _search_item_by_id_enemigo(ListaItems, idEnemigo);
+
+
+	if ((temp != NULL )&& (temp->idEnemigo == idEnemigo)){
+	temp->posx = x;
+	temp->posy = y;
+}
 
 }
 
@@ -174,7 +172,7 @@ int darRecursoPersonaje(t_list* personajes, t_list* recursos, char id,
 	ITEM_NIVEL * personaje = _search_item_by_id(personajes, id);
 	int respuesta;
 
-	if ((personaje != NULL )&& (personaje->id == id) && (personaje->item_type==0)){
+	if ((personaje != NULL )&& (personaje->id == id) && (personaje->item_type==PERSONAJE_ITEM_TYPE)){
 	ITEM_ADQ* temp2 = (personaje->objetosAdquiridos);
 
 	while (temp2 != NULL && temp2->id != objetoId) { //Busco Recurso en el personaje
@@ -300,6 +298,14 @@ void destroyAdquirido(ITEM_ADQ** ListaAdq) {
 ITEM_NIVEL* _search_item_by_id(t_list* items, char id) {
 	bool _search_by_id(ITEM_NIVEL* item) {
 		return item->id == id;
+	}
+
+	return list_find(items, (void*) _search_by_id);
+}
+
+ITEM_NIVEL* _search_item_by_id_enemigo(t_list* items, int id) {
+	bool _search_by_id(ITEM_NIVEL* item) {
+		return item->idEnemigo == id;
 	}
 
 	return list_find(items, (void*) _search_by_id);

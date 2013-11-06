@@ -32,7 +32,7 @@
 
 //------------------------------------------TYPES-----------------------------------------------------
 typedef struct nivel_conf_t {
-        char nombre[10];
+        char* nombre;
         char simbolo[2];
         char *orquestadoraddr;
         char *orquestadorport;
