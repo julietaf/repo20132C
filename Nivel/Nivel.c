@@ -20,15 +20,15 @@ int main(void) {
 	inicializarInterfazGrafica();
 	inicializarConfiguracionCajas();
 	nivel_gui_dibujar(listaRecursos, configObj->nombre);
-	inicializarSockEscucha();
-	inicializarConexionPlataforma();
+//	inicializarSockEscucha();
+//	inicializarConexionPlataforma();
 	log_info(logFile, "Esperando conexiones en ip: %s port: %s",
 			configObj->localhostaddr, configObj->localhostport);
 //	crearHiloEnemigo();
 	pthread_t hEnemigo;
 	pthread_create(&hEnemigo, NULL, (void*) enemigo, NULL );
 	while (1){
-		atenderMensajePlanificador(plataformaSockfd);
+//		atenderMensajePlanificador(plataformaSockfd);
 	}
 	//TODO: MUchas muy importantes cosa//
 	pthread_join(hEnemigo, (void **) NULL );
@@ -148,17 +148,17 @@ void separador_log(char* head) {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void inicializarSockEscucha() {
-	sockEscucha = sockets_createServer(configObj->localhostaddr,
-			configObj->localhostport, 1);
-	if (sockEscucha == -1) {
-		log_error(logFile, "No se pudo crear el socket escucha");
-	} else {
-		log_info(logFile, "Nivel escucnando en ip: %s, puerto: %s, fd:%d",
-				configObj->localhostaddr, configObj->localhostport,
-				sockEscucha);
-	}
-}
+//void inicializarSockEscucha() {
+//	sockEscucha = sockets_createServer(configObj->localhostaddr,
+//			configObj->localhostport, 1);
+//	if (sockEscucha == -1) {
+//		log_error(logFile, "No se pudo crear el socket escucha");
+//	} else {
+//		log_info(logFile, "Nivel escucnando en ip: %s, puerto: %s, fd:%d",
+//				configObj->localhostaddr, configObj->localhostport,
+//				sockEscucha);
+//	}
+//}
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -712,18 +712,19 @@ int validarPosicionesEnemigo(t_list* bufferMovimiento) {
 	for (i = 0; i < list_size(bufferMovimiento); i++) {
 		coordenada_t* coordenadaTemp; //= malloc(sizeof(coordenada_t));
 		coordenadaTemp = list_get(bufferMovimiento, i);
+		log_debug(logFile, "Validando buffer %d, posiicion (%d, %d)", i, coordenadaTemp->ejeX, coordenadaTemp->ejeY);
 		r = validarPosicionEnemigo(coordenadaTemp);
 //		free (coordenadaTemp);
 		if (!r) {
 			return 0;
 		}
-		if (coordenadaTemp->ejeX < 0 && coordenadaTemp->ejeX > col) {
+		if (coordenadaTemp->ejeX < 0 || coordenadaTemp->ejeX > col) {
 			log_warning(logFile,
 					"Posicion invalida (%d,%d), supera los limites",
 					coordenadaTemp->ejeX, coordenadaTemp->ejeY);
 			return 0;
 		}
-		if (coordenadaTemp->ejeY < 0 && coordenadaTemp->ejeY > fil) {
+		if (coordenadaTemp->ejeY < 0 || coordenadaTemp->ejeY > fil) {
 			log_warning(logFile,
 					"Posicion invalida (%d,%d), supera los limites",
 					coordenadaTemp->ejeX, coordenadaTemp->ejeY);

@@ -6,6 +6,10 @@
  */
 #include "geospatial.h"
 
+#include <sys/timeb.h>
+
+#include <time.h>
+
 //-----------------------------FUNCIONES PUBLICAS---------------------------------------
 
 /**
@@ -287,6 +291,9 @@ void modificarCoordenada(coordenada_t* coordenada, int x, int y) {
 
 int randomNumber(int min_num, int max_num) {
 	int result = 0, low_num = 0, hi_num = 0;
+	struct timeb tmili;
+	ftime(&tmili);
+
 	if (min_num < max_num) {
 		low_num = min_num;
 		hi_num = max_num + 1;
@@ -294,8 +301,9 @@ int randomNumber(int min_num, int max_num) {
 		low_num = max_num + 1;
 		hi_num = min_num;
 	}
-	srand(time(NULL));
-	result = (rand() % (hi_num - low_num)) + low_num;
+//	srand(time(NULL));
+	int random = rand() *tmili.millitm;
+	result = (random % (hi_num - low_num)) + low_num;
 	return result;
 }
 
