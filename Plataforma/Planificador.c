@@ -32,11 +32,16 @@ void planificador(datos_planificador_t *datos) {
 	FD_ZERO(&bagEscucha);
 	FD_SET(datos->sockfdNivel, datos->bagMaster);
 	int retval, sockfdMax = datos->sockfdNivel;
+	struct timeval timeout;
+	int usegundos = (datos->retardo * 1000000);
+	int sec = div(usegundos, 1000000).quot;
+	int usec = div(usegundos, 1000000).rem;
 
 	while (1) {
 		bagEscucha = *datos->bagMaster;
-
-		retval = select(sockfdMax + 1, &bagEscucha, NULL, NULL, NULL );
+		timeout.tv_sec = sec;
+		timeout.tv_usec = usec;
+		retval = select(sockfdMax + 1, &bagEscucha, NULL, NULL, &timeout);
 
 		if (retval == -1) //Ocurrio un error
 			log_error(logFile, "Error en select");

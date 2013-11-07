@@ -23,6 +23,7 @@ typedef struct {
 	int vidas;
 	char *ipOrquestador;
 	char *puertoOrquestador;
+	char **planNiveles;
 } configuracion_personaje_t;
 
 typedef struct {
@@ -32,6 +33,9 @@ typedef struct {
 	int vidas;
 	char *ipOrquestador;
 	char *puertoOrquestador;
+	char ultimoEje;
+	char* objetivo_actual;
+	int cantObjetivos;
 } hilo_personaje_t;
 
 t_config *configFile;
@@ -42,5 +46,7 @@ void hiloPersonaje(hilo_personaje_t *datos);
 hilo_personaje_t *crearDatosPersonaje(int index);
 void enviarHandshakePersonaje(int sockfd);
 char *getObjetivoKey(char *nombreNivel);
+void perderVida(char* motivo);
+void reiniciarNivel(hilo_personaje_t* personaje, int nivelAReiniciar);
 
 #endif /* PERSONAJE_H_ */
