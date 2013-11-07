@@ -7,16 +7,23 @@
 
 #include "Personaje.h"
 
-//TODO: Poner loggers, hay muchas cosas mucho muy importantes
 int main(void) {
 	getConfiguracion();
 	int i;
+	t_list *hilos = list_create();
+	hilo_personaje_t *dataHilo;
 
 	for (i = 0; config_get_array_value(configFile, "planDeNiveles")[i] != NULL ;
 			i++) {
-		hilo_personaje_t *dataHilo = crearDatosPersonaje(i);
+		dataHilo = crearDatosPersonaje(i);
 		pthread_create(dataHilo->hilo, NULL, (void *) hiloPersonaje,
 				(void *) dataHilo);
+		list_add(hilos, dataHilo);
+	}
+
+	for (i = 0; list_get(hilos, i) != NULL ; i++) {
+		dataHilo = list_get(hilos, i);
+		pthread_join(*dataHilo->hilo, (void **) NULL );
 	}
 
 	return EXIT_SUCCESS;
@@ -35,7 +42,6 @@ hilo_personaje_t *crearDatosPersonaje(int index) {
 	dataHilo->objetivos = config_get_array_value(configFile, key);
 	dataHilo->hilo = malloc(sizeof(pthread_t));
 	dataHilo->cantObjetivos = 0;
-	dataHilo->objetivo_actual = string_duplicate(dataHilo->objetivos[0]);
 	free(key);
 
 	return dataHilo;
