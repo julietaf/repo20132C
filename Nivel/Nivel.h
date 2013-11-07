@@ -88,8 +88,11 @@ int personajeEnCaja(char pId, char rId);
 void mandarRecursosLiberados(t_list* recursosLiberados);
 t_list* esperarRecursosAsignados();
 void actualizarEstado(t_list* asignados);
+int getNotifyFileDescriptor();
+void tratarModificacionAlgoritmo(int file_descriptor);
 //-----------------------Hilo DeadLock-------------------------------
 void deadLock();
+void gestionarDeadLock();
 //-----------------------Hilo Enemigo--------------------------------
 void enemigo(int idEnemigo);
 void agregarEnemigo(int idEnemigo, coordenada_t* posicion);

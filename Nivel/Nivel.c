@@ -584,6 +584,52 @@ void actualizarEstado(t_list* asignados) {
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
+
+int getNotifyFileDescriptor() {
+	int file_descriptor = inotify_init();
+	if (file_descriptor < 0) {
+		log_error(logFile, "Al inicializar el inotify");
+	} else {
+		log_info(logFile, "Inotify inicializado");
+	}
+
+	int watch_descriptor = inotify_add_watch(file_descriptor, CONF_PATH,
+			IN_MODIFY);
+	if (watch_descriptor < 0) {
+		log_error(logFile, "Al agregar el watch");
+	} else {
+		log_info(logFile, "Watch agregado");
+	}
+
+	return file_descriptor;
+
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void tratarModificacionAlgoritmo(int file_descriptor) {
+
+	char buffer[BUF_LEN];
+	int length = read(file_descriptor, buffer, BUF_LEN);
+	if (length < 0) {
+		log_error(logFile, "Notify read");
+	}
+	int offset = 0;
+	while (offset < length) {
+
+		struct inotify_event *event = (struct inotify_event *) &buffer[offset];
+
+		if (event->mask & IN_MODIFY) {
+			if (!(event->mask & IN_ISDIR)) {
+				enviarDatosAlgoritmo();
+				log_info(logFile, "Cambio de Algoritmo de planificacion");
+			}
+		}
+		offset += sizeof(struct inotify_event) + event->len;
+	}
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -756,11 +802,45 @@ int validarPosicionEnemigo(coordenada_t* posicion) {
 	return 1;
 
 }
+
 //-----------------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void deadLock() {
-	//TODO:
+	while (1){
+		int wait = configObj->deadlockTime;
+		sleep(wait);
+		gestionarDeadLock();
+		
+	}
+	
+	
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void gestionarDeadLock() {
+	int = i;
+	t_list* bloqueados = obtenerPersonajesEnDL(listaRecursos, listaPersonajes);
+	ITEM_NIVEL * temp = NULL;
+	ITEM_NIVEL * menor = NULL;
+	
+	if (list_is_empty(bloqueados)){
+		return;
+	}
+	
+	menor = list_get(bloqueados, 0)
+	for (i = 0; i < list_size(bloqueados); i++){
+		temp = list_get(bloqueados, i)
+		if (temp->socket < menor->socket){
+			menor = temp;
+		}
+	}
+	
+	notificarMuertePersonaje(menor->tempId, VICTIMA_DEADLOCK)
+	
+	
+
 }
 
