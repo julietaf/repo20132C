@@ -127,20 +127,33 @@ int realizarMovimiento(int sockfdOrquestador, hilo_personaje_t *datos) {
 		nbytes = solicitarCoordenadasObjetivo(sockfdOrquestador,
 				datos->objetivos[datos->objetivoActual]);
 
+	} else {
+		//TODO: falta preguntar por si el personaje ya esta en la misma posicion que el objetivo.
+		coordenadaMovimientoAlternado(datos->coordPosicion,
+				datos->coordObjetivo);
+		nbytes = enviarNotificacionMovimiento(sockfdOrquestador,
+				datos->coordPosicion, datos->simbolo);
 	}
-
-	coordenadaMovimientoAlternado(datos->coordPosicion, datos->coordObjetivo);
-	enviarNotificacionMovimiento(sockfdOrquestador, datos->coordPosicion);
 
 	return nbytes;
 }
 
 int enviarNotificacionMovimiento(int sockfdOrquestador,
-		coordenada_t * coordenada) {
+		coordenada_t * coordenada, char id) {
 	header_t header;
+	int16_t coordLenght;
+	int nbytes, offset = 0;
 	header.type = NOTIFICACION_MOVIMIENTO;
-	char *data = coordenadas_serializer(coordenada, &header.length);
-	return sockets_send(sockfdOrquestador, &header, data);
+	char *coordSerialized = coordenadas_serializer(coordenada, &coordLenght);
+	char *serialized = malloc(sizeof(char) + coordLenght);
+	memcpy(serialized, &id, offset = sizeof(char));
+	memcpy(serialized + offset, coordSerialized, coordLenght);
+	header.length = coordLenght + sizeof(char);
+	nbytes = sockets_send(sockfdOrquestador, &header, serialized);
+	free(serialized);
+	free(coordSerialized);
+
+	return nbytes;
 }
 
 int recibirCoordenadas(int sockfdOrquestador, hilo_personaje_t *datos) {
@@ -155,7 +168,7 @@ int recibirCoordenadas(int sockfdOrquestador, hilo_personaje_t *datos) {
 	return nbytes;
 }
 
-int solicitarCoordenadasObjetivo(int sockfdOrquestador, char objetivo) {
+int solicitarCoordenadasObjetivo(int sockfdOrquestador, char *objetivo) {
 	header_t header;
 	header.type = UBICACION_CAJA;
 	header.length = sizeof(char);

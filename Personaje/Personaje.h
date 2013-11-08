@@ -14,6 +14,7 @@
 #include <commons/sockets.h>
 #include <commons/log.h>
 #include <pthread.h>
+#include <commons/geospatial.h>
 
 #define LOG_PATH "./txt/log.txt"
 #define CONFIG_PATH "./txt/config.txt"
@@ -55,8 +56,8 @@ void reiniciarNivel(hilo_personaje_t* personaje, int nivelAReiniciar);
 int atenderOrquestador(int sockfdOrquestador, hilo_personaje_t *datos);
 int enviarDatosPersonaje(int sockfdOrquestador, hilo_personaje_t *datos);
 int realizarMovimiento(int sockfdOrquestador, hilo_personaje_t *datos);
-int solicitarCoordenadasObjetivo(int sockfdOrquestador, char objetivo);
+int solicitarCoordenadasObjetivo(int sockfdOrquestador, char *objetivo);
 int recibirCoordenadas(int sockfdOrquestador, hilo_personaje_t *datos);
-int enviarNotificacionMovimiento(int sockfdOrquestador,coordenada_t * coordenada);
+int enviarNotificacionMovimiento(int sockfdOrquestador,coordenada_t * coordenada,char id);
 
 #endif /* PERSONAJE_H_ */
