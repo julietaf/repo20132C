@@ -7,14 +7,14 @@
 
 #include "Planificador.h"
 
-void atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
+int atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 		datos_planificador_t *datos);
 void moverPersonaje(datos_planificador_t *datos);
 void seleccionarPorRoundRobin(datos_planificador_t *datosPlan);
 void seleccionarPorSRDF(datos_planificador_t *datos);
 void enviarTurnoConcedido(datos_personaje_t *personaje);
 void atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje);
-void atenderPedidoNivel(datos_planificador_t *datos);
+int atenderPedidoNivel(datos_planificador_t *datos);
 void gestionarUbicacionCaja(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje);
 void reenviarUbicacionCaja(datos_planificador_t *datosPlan,
@@ -26,6 +26,7 @@ void gestionarNotificacionMovimiento(datos_planificador_t *datosPlan,
 void gestionarSolicitudRecurso(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje);
 datos_personaje_t *seleccionarCaminoMasCorto(t_queue *personajes);
+int actualizarAlgoritmo(header_t *header, datos_planificador_t *datos);
 
 void planificador(datos_planificador_t *datos) {
 	fd_set bagEscucha;
@@ -52,17 +53,19 @@ void planificador(datos_planificador_t *datos) {
 	}
 }
 
-void atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
+int atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 		datos_planificador_t *datos) {
-	int sockfd;
+	int nbytes, sockfd;
 
 	for (sockfd = 0; sockfd <= sockfdMax; sockfd++) {
 		if (sockfd == datos->sockfdNivel) {
-			atenderPedidoNivel(datos);
+			nbytes = atenderPedidoNivel(datos);
 		} else {
 			atenderPedidoPersonaje(datos, sockfd);
 		}
 	}
+
+	return nbytes;
 }
 
 void moverPersonaje(datos_planificador_t *datos) {
@@ -156,16 +159,36 @@ void atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje) {
 	}
 }
 
-void atenderPedidoNivel(datos_planificador_t *datos) {
+int atenderPedidoNivel(datos_planificador_t *datos) {
 	header_t header;
 
-	recv(datos->sockfdNivel, &header, sizeof(header), MSG_WAITALL);
+	int nbytes = recv(datos->sockfdNivel, &header, sizeof(header), MSG_WAITALL);
 
 	switch (header.type) {
 	case PERSONAJE_FINALIZO:
 		//TODO:Realizar tareas de finalización.
 		break;
+	case NOTIFICAR_ALGORITMO_PLANIFICACION:
+		nbytes = actualizarAlgoritmo(&header, datos);
+		break;
+		//TODO: implementar mensajes: VICTIMA_DEADLOCK, VICTIMA_ENEMIGO, NOTIFICACION_RECURSOS_LIBERADOS
 	}
+
+	return nbytes;
+}
+
+int actualizarAlgoritmo(header_t *header, datos_planificador_t *datos) {
+	char *data = malloc(header->length);
+	int nbytes = recv(datos->sockfdNivel, data, header->length, MSG_WAITALL);
+	informacion_planificacion_t *info = informacionPlanificacion_deserializer(
+			data);
+	free(data);
+	datos->algoritmo = info->algoritmo;
+	datos->retardo = info->retardo;
+	datos->quatum = info->quantum;
+	informacionPlanificacion_destroy(info);
+
+	return nbytes;
 }
 
 void reenviarUbicacionCaja(datos_planificador_t *datosPlan,
