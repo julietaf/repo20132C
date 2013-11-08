@@ -304,7 +304,7 @@ int randomNumber(int min_num, int max_num) {
 //	srand(time(NULL));
 	int random = rand() *tmili.millitm;
 	result = (random % (hi_num - low_num)) + low_num;
-	return result;
+	return abs(result);
 }
 
 int obtenerDistanciaEnX(coordenada_t* inicio, coordenada_t* fin) {

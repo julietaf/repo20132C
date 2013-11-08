@@ -13,6 +13,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <sys/inotify.h>
+
 #include "commons/deadlock_detection.h"
 #include "commons/collections/list.h"
 #include "commons/tad_items.h"
@@ -29,6 +32,14 @@
 #define NEG "-"
 #define EJE_X "ejeX"
 #define EJE_Y "ejeY"
+
+//---- Inotify
+#define BUFF_SIZE 1024
+#define MAXDATASIZE 100
+#define MAXCONN 5
+#define direccion INADDR_ANY
+#define EVENT_SIZE  ( sizeof (struct inotify_event) + 24 )
+#define BUF_LEN     ( 1024 * EVENT_SIZE )
 
 //------------------------------------------TYPES-----------------------------------------------------
 typedef struct nivel_conf_t {
@@ -58,6 +69,8 @@ t_list* listaPersonajes = NULL;
 t_list* listaEnemigos = NULL;
 NIVEL_CONF *configObj;
 informacion_planificacion_t* configPlanificador;
+
+pthread_mutex_t *mutexDibujables;
 
 //--------------------------------------------FIRMAS--------------------------------------------------
 NIVEL_CONF* inicializarCongiuracionNivel();

@@ -13,6 +13,9 @@ int main(void) {
 	listaPersonajes = list_create();
 	listaEnemigos = list_create();
 
+	mutexDibujables = malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(mutexDibujables, NULL );
+
 	configObj = inicializarCongiuracionNivel();
 	logFile = log_create(LOG_PATH, "ProcesoNivel", false,
 			log_level_from_string(configObj->logLevel));
@@ -24,14 +27,14 @@ int main(void) {
 //	inicializarConexionPlataforma();
 	log_info(logFile, "Esperando conexiones en ip: %s port: %s",
 			configObj->localhostaddr, configObj->localhostport);
-//	crearHiloEnemigo();
-	pthread_t hEnemigo;
-	pthread_create(&hEnemigo, NULL, (void*) enemigo, NULL );
+	crearHiloEnemigo();
+//	pthread_t hEnemigo;
+//	pthread_create(&hEnemigo, NULL, (void*) enemigo, NULL );
 	while (1){
 //		atenderMensajePlanificador(plataformaSockfd);
 	}
 	//TODO: MUchas muy importantes cosa//
-	pthread_join(hEnemigo, (void **) NULL );
+//	pthread_join(hEnemigo, (void **) NULL );
 	return EXIT_SUCCESS;
 }
 
@@ -593,7 +596,7 @@ int getNotifyFileDescriptor() {
 		log_info(logFile, "Inotify inicializado");
 	}
 
-	int watch_descriptor = inotify_add_watch(file_descriptor, CONF_PATH,
+	int watch_descriptor = inotify_add_watch(file_descriptor, CONFIG_PATH,
 			IN_MODIFY);
 	if (watch_descriptor < 0) {
 		log_error(logFile, "Al agregar el watch");
@@ -641,7 +644,13 @@ void enemigo(int idEnemigo) {
 	while (1) {
 		cazarPersonajes(bufferMovimiento, posicion);
 		moverEnemigo(listaEnemigos, idEnemigo, posicion->ejeX, posicion->ejeY);
+
+		pthread_mutex_lock(mutexDibujables);
+
 		dibujar();
+
+		pthread_mutex_unlock(mutexDibujables);
+
 		log_info(logFile, "Enemigo: %d,se movio a posicion (%d, %d) ",
 				idEnemigo, posicion->ejeX, posicion->ejeY);
 	}
@@ -741,7 +750,6 @@ void movimientoDeEspera(t_list* bufferMovimiento, coordenada_t* posicion) {
 
 	if (list_is_empty(bufferMovimiento)) {
 		do {
-			//TODO: aloca memoria
 			movimientoLRandom(posicion, bufferMovimiento);
 		} while (!validarPosicionesEnemigo(bufferMovimiento));
 	}
@@ -762,20 +770,10 @@ int validarPosicionesEnemigo(t_list* bufferMovimiento) {
 		r = validarPosicionEnemigo(coordenadaTemp);
 //		free (coordenadaTemp);
 		if (!r) {
+			list_clean_and_destroy_elements(bufferMovimiento, (void*)free);
 			return 0;
 		}
-		if (coordenadaTemp->ejeX < 0 || coordenadaTemp->ejeX > col) {
-			log_warning(logFile,
-					"Posicion invalida (%d,%d), supera los limites",
-					coordenadaTemp->ejeX, coordenadaTemp->ejeY);
-			return 0;
-		}
-		if (coordenadaTemp->ejeY < 0 || coordenadaTemp->ejeY > fil) {
-			log_warning(logFile,
-					"Posicion invalida (%d,%d), supera los limites",
-					coordenadaTemp->ejeX, coordenadaTemp->ejeY);
-			return 0;
-		}
+
 	}
 
 	return 1;
@@ -794,6 +792,18 @@ int validarPosicionEnemigo(coordenada_t* posicion) {
 			log_warning(logFile,
 					"Posicion invalida (%d,%d), coincide con una caja",
 					temp->posx, temp->posy);
+			return 0;
+		}
+		if (posicion->ejeX < 0 || posicion->ejeX > col) {
+			log_warning(logFile,
+					"Posicion invalida (%d,%d), supera los limites",
+					posicion->ejeX, posicion->ejeY);
+			return 0;
+		}
+		if (posicion->ejeY < 0 || posicion->ejeY > fil) {
+			log_warning(logFile,
+					"Posicion invalida (%d,%d), supera los limites",
+					posicion->ejeX, posicion->ejeY);
 			return 0;
 		}
 
@@ -822,7 +832,8 @@ void deadLock() {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void gestionarDeadLock() {
-	int = i;
+	int i;
+
 	t_list* bloqueados = obtenerPersonajesEnDL(listaRecursos, listaPersonajes);
 	ITEM_NIVEL * temp = NULL;
 	ITEM_NIVEL * menor = NULL;
@@ -831,15 +842,15 @@ void gestionarDeadLock() {
 		return;
 	}
 	
-	menor = list_get(bloqueados, 0)
+	menor = list_get(bloqueados, 0);
 	for (i = 0; i < list_size(bloqueados); i++){
-		temp = list_get(bloqueados, i)
+		temp = list_get(bloqueados, i);
 		if (temp->socket < menor->socket){
 			menor = temp;
 		}
 	}
 	
-	notificarMuertePersonaje(menor->tempId, VICTIMA_DEADLOCK)
+	notificarMuertePersonaje(menor->id, VICTIMA_DEADLOCK);
 	
 	
 
