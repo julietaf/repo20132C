@@ -10,6 +10,7 @@
 int main(void) {
 	getConfiguracion();
 	int i;
+	logFile = log_create(LOG_PATH, config->nombre, false, LOG_LEVEL_ERROR);
 	t_list *hilos = list_create();
 	hilo_personaje_t *dataHilo;
 
@@ -41,7 +42,7 @@ hilo_personaje_t *crearDatosPersonaje(int index) {
 	char *key = getObjetivoKey(dataHilo->nivel);
 	dataHilo->objetivos = config_get_array_value(configFile, key);
 	dataHilo->hilo = malloc(sizeof(pthread_t));
-	dataHilo->cantObjetivos = 0;
+	dataHilo->simbolo = *config_get_string_value(configFile, "simbolo");
 	free(key);
 
 	return dataHilo;
@@ -49,7 +50,7 @@ hilo_personaje_t *crearDatosPersonaje(int index) {
 
 char *getObjetivoKey(char *nombreNivel) {
 	char *key = malloc(strlen("obj[") + strlen(nombreNivel) + strlen("]") + 1);
-	strcat(key, "obj[");
+	strcpy(key, "obj[");
 	strcat(key, nombreNivel);
 	strcat(key, "]");
 
@@ -79,6 +80,10 @@ void hiloPersonaje(hilo_personaje_t *datos) {
 	FD_ZERO(&bagEscucha);
 	FD_SET(sockfdOrquestador, &bagMaster);
 	int sockfd, sockfdMax = sockfdOrquestador;
+	datos->objetivoActual = 0;
+	datos->coordPosicion = malloc(sizeof(coordenada_t));
+	datos->coordPosicion->ejeX = 0;
+	datos->coordPosicion->ejeY = 0;
 
 	while (1) {
 		bagEscucha = bagMaster;
@@ -87,10 +92,91 @@ void hiloPersonaje(hilo_personaje_t *datos) {
 
 		for (sockfd = 0; sockfd < sockfdMax + 1; sockfd++) {
 			if (FD_ISSET(sockfd,&bagEscucha)) {
-
+				if (sockfd == sockfdOrquestador) {
+					atenderOrquestador(sockfdOrquestador, datos);
+				}
 			}
 		}
 	}
+}
+
+int atenderOrquestador(int sockfdOrquestador, hilo_personaje_t *datos) {
+	header_t header;
+	int nbytes = recv(sockfdOrquestador, &header, sizeof(header_t),
+			MSG_WAITALL);
+
+	switch (header.type) {
+	case HANDSHAKE_ORQUESTADOR:
+		nbytes = enviarDatosPersonaje(sockfdOrquestador, datos);
+		break;
+	case TURNO_CONCEDIDO:
+		nbytes = realizarMovimiento(sockfdOrquestador, datos);
+		break;
+	case UBICACION_CAJA:
+		nbytes = recibirCoordenadas(sockfdOrquestador, datos);
+		break;
+	}
+
+	return nbytes;
+}
+
+int realizarMovimiento(int sockfdOrquestador, hilo_personaje_t *datos) {
+	int nbytes = 0;
+
+	if (datos->coordObjetivo == NULL ) {
+		nbytes = solicitarCoordenadasObjetivo(sockfdOrquestador,
+				datos->objetivos[datos->objetivoActual]);
+
+	}
+
+	coordenadaMovimientoAlternado(datos->coordPosicion, datos->coordObjetivo);
+	enviarNotificacionMovimiento(sockfdOrquestador, datos->coordPosicion);
+
+	return nbytes;
+}
+
+int enviarNotificacionMovimiento(int sockfdOrquestador,
+		coordenada_t * coordenada) {
+	header_t header;
+	header.type = NOTIFICACION_MOVIMIENTO;
+	char *data = coordenadas_serializer(coordenada, &header.length);
+	return sockets_send(sockfdOrquestador, &header, data);
+}
+
+int recibirCoordenadas(int sockfdOrquestador, hilo_personaje_t *datos) {
+	header_t header;
+	int nbytes = recv(sockfdOrquestador, &header, sizeof(header_t),
+			MSG_WAITALL);
+	char *serialized = malloc(header.length);
+	nbytes = recv(sockfdOrquestador, serialized, header.length, MSG_WAITALL);
+	datos->coordObjetivo = coordenadas_deserializer(serialized);
+	free(serialized);
+
+	return nbytes;
+}
+
+int solicitarCoordenadasObjetivo(int sockfdOrquestador, char objetivo) {
+	header_t header;
+	header.type = UBICACION_CAJA;
+	header.length = sizeof(char);
+	return sockets_send(sockfdOrquestador, &header, objetivo);
+}
+
+int enviarDatosPersonaje(int sockfdOrquestador, hilo_personaje_t *datos) {
+	header_t header;
+	header.type = NOTIFICAR_DATOS_PERSONAJE;
+	notificacion_datos_personaje_t *notificacion = malloc(
+			sizeof(notificacion_datos_personaje_t));
+	notificacion->nombreNivel = malloc(strlen(datos->nivel) + 1);
+	strcpy(notificacion->nombreNivel, datos->nivel);
+	notificacion->simbolo = datos->simbolo;
+	char *serialized = notificacionDatosPersonaje_serializer(notificacion,
+			&header.length);
+	int nbytes = sockets_send(sockfdOrquestador, &header, serialized);
+	free(serialized);
+	notificacionDatosPersonaje_destroy(notificacion);
+
+	return nbytes;
 }
 
 void enviarHandshakePersonaje(int sockfd) {
