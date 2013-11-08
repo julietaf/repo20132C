@@ -58,6 +58,8 @@ int enviarDatosPersonaje(int sockfdOrquestador, hilo_personaje_t *datos);
 int realizarMovimiento(int sockfdOrquestador, hilo_personaje_t *datos);
 int solicitarCoordenadasObjetivo(int sockfdOrquestador, char *objetivo);
 int recibirCoordenadas(int sockfdOrquestador, hilo_personaje_t *datos);
-int enviarNotificacionMovimiento(int sockfdOrquestador,coordenada_t * coordenada,char id);
+int enviarNotificacionMovimiento(int sockfdOrquestador,
+		coordenada_t * coordenada, char id);
+int enviarSolicitudObjetivo(int sockfdOrquestador, hilo_personaje_t *datos);
 
 #endif /* PERSONAJE_H_ */

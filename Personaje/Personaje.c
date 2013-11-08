@@ -79,7 +79,7 @@ void hiloPersonaje(hilo_personaje_t *datos) {
 	FD_ZERO(&bagMaster);
 	FD_ZERO(&bagEscucha);
 	FD_SET(sockfdOrquestador, &bagMaster);
-	int sockfd, sockfdMax = sockfdOrquestador;
+	int sockfd, sockfdMax = sockfdOrquestador, nbytes;
 	datos->objetivoActual = 0;
 	datos->coordPosicion = malloc(sizeof(coordenada_t));
 	datos->coordPosicion->ejeX = 0;
@@ -93,7 +93,10 @@ void hiloPersonaje(hilo_personaje_t *datos) {
 		for (sockfd = 0; sockfd < sockfdMax + 1; sockfd++) {
 			if (FD_ISSET(sockfd,&bagEscucha)) {
 				if (sockfd == sockfdOrquestador) {
-					atenderOrquestador(sockfdOrquestador, datos);
+					nbytes = atenderOrquestador(sockfdOrquestador, datos);
+
+					if (nbytes == 0) //TODO: que hacer cuando la plataforma se desconecta?
+						break;
 				}
 			}
 		}
@@ -115,6 +118,16 @@ int atenderOrquestador(int sockfdOrquestador, hilo_personaje_t *datos) {
 	case UBICACION_CAJA:
 		nbytes = recibirCoordenadas(sockfdOrquestador, datos);
 		break;
+	case OTORGAR_RECURSO:
+		coordenadas_destroy(datos->coordObjetivo);
+		datos->coordObjetivo = NULL;
+		datos->objetivoActual++;
+		break;
+		//TODO:Faltan implementar los siguientes mensajes
+	case NEGAR_RECURSO:
+		break;
+	case NOTIFICAR_MUERTE:
+		break;
 	}
 
 	return nbytes;
@@ -123,19 +136,28 @@ int atenderOrquestador(int sockfdOrquestador, hilo_personaje_t *datos) {
 int realizarMovimiento(int sockfdOrquestador, hilo_personaje_t *datos) {
 	int nbytes = 0;
 
-	if (datos->coordObjetivo == NULL ) {
+	if (datos->coordObjetivo == NULL ) { //No hay coordenadas del objetivo
 		nbytes = solicitarCoordenadasObjetivo(sockfdOrquestador,
 				datos->objetivos[datos->objetivoActual]);
-
-	} else {
-		//TODO: falta preguntar por si el personaje ya esta en la misma posicion que el objetivo.
+	} else if (obtenerDistancia(datos->coordPosicion, datos->coordObjetivo)) { //el personaje debe moverse en busca del objetivo
 		coordenadaMovimientoAlternado(datos->coordPosicion,
 				datos->coordObjetivo);
 		nbytes = enviarNotificacionMovimiento(sockfdOrquestador,
 				datos->coordPosicion, datos->simbolo);
+	} else { //el personaje ya llego al objetivo
+		nbytes = enviarSolicitudObjetivo(sockfdOrquestador, datos);
 	}
 
 	return nbytes;
+}
+
+int enviarSolicitudObjetivo(int sockfdOrquestador, hilo_personaje_t *datos) {
+	header_t header;
+	header.type = SOLICITAR_RECURSO;
+	header.length = sizeof(char);
+
+	return sockets_send(sockfdOrquestador, &header,
+			datos->objetivos[datos->objetivoActual]);
 }
 
 int enviarNotificacionMovimiento(int sockfdOrquestador,
