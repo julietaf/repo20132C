@@ -27,6 +27,12 @@ void gestionarSolicitudRecurso(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje);
 datos_personaje_t *seleccionarCaminoMasCorto(t_queue *personajes);
 int actualizarAlgoritmo(header_t *header, datos_planificador_t *datos);
+int removerPersonaje(header_t *header, datos_planificador_t *datos);
+int notificarMuerteDeadlock(char idPersonaje, datos_planificador_t *datos);
+t_list *desbloquearPersonajes(t_list *recursosLiberados,
+		datos_planificador_t *datos);
+int usarRecurso(char idObjetivo, t_list *recursosLiberados, t_list *recUsados,
+		char simboloPersonaje);
 
 void planificador(datos_planificador_t *datos) {
 	fd_set bagEscucha;
@@ -171,8 +177,102 @@ int atenderPedidoNivel(datos_planificador_t *datos) {
 	case NOTIFICAR_ALGORITMO_PLANIFICACION:
 		nbytes = actualizarAlgoritmo(&header, datos);
 		break;
-		//TODO: implementar mensajes: VICTIMA_DEADLOCK, VICTIMA_ENEMIGO, NOTIFICACION_RECURSOS_LIBERADOS
+	case VICTIMA_DEADLOCK:
+		nbytes = removerPersonaje(&header, datos);
+		break;
+		//TODO: implementar mensajes: VICTIMA_ENEMIGO, NOTIFICACION_RECURSOS_LIBERADOS
 	}
+
+	return nbytes;
+}
+
+int removerPersonaje(header_t *header, datos_planificador_t *datos) {
+	char *data = malloc(header->length);
+	int nbytes = recv(datos->sockfdNivel, data, header->length, MSG_WAITALL);
+	char idPersonaje;
+	memcpy(&idPersonaje, data, sizeof(char));
+	t_list *recursosLiberados = listaRecursos_deserializer(data + sizeof(char),
+			header->length - sizeof(char));
+	free(data);
+	nbytes = notificarMuerteDeadlock(idPersonaje, datos);
+	desbloquearPersonajes(recursosLiberados, datos);
+
+	return nbytes;
+}
+
+t_list *desbloquearPersonajes(t_list *recursosLiberados,
+		datos_planificador_t *datos) {
+	t_list *recUsados = list_create();
+
+	if (!queue_is_empty(datos->personajesBloqueados)) {
+		t_list *perDesbloqueados = list_create();
+		datos_personaje_t *perBloqueado, *perDesbloqueado;
+		int i;
+
+		for (i = 0; i < datos->personajesBloqueados->elements; i++) {
+			perBloqueado = list_get(datos->personajesBloqueados->elements, i);
+			int fueUsado = usarRecurso(perBloqueado->objetivo,
+					recursosLiberados, recUsados, perBloqueado->simbolo);
+
+			if (fueUsado) {
+				list_add(perDesbloqueados, perBloqueado);
+//				informarDesbloqueo(perBloqueado);
+
+				if (datos->personajesBloqueados->elements == 0)
+					break;
+			}
+		}
+
+		for (i = 0; i < perDesbloqueados->elements_count; i++) {
+			perDesbloqueado = list_get(perDesbloqueados, i);
+//			desbloquearPersonaje(perDesbloqueado, datos);
+		}
+
+		list_destroy(perDesbloqueados);
+	}
+
+	return recUsados;
+}
+
+int usarRecurso(char simboloRecurso, t_list *recursosLiberados, t_list *recursosUsados,
+		char simboloPersonaje) {
+		int _is_recurso(recurso_t *recurso) {
+			return recurso->id == simboloRecurso;
+		}
+
+		recurso_t *recursoLiberado = list_find(recursosLiberados,
+				(void *) _is_recurso);
+
+		if (recursoLiberado != NULL ) {
+			recursoLiberado->quantity--;
+//			datos_personaje_t *personajeDesbloqueado = malloc(
+//					sizeof(datos_personaje_t));
+//			personajeDesbloqueado->idRecurso = recursoLiberado->id;
+//			personajeDesbloqueado->idPersonaje = simboloPersonaje;
+//			list_add(recursosUsados, personajeDesbloqueado);
+
+			if (recursoLiberado->quantity == 0) {
+				list_remove_by_condition(recursosLiberados, (void *) _is_recurso);
+				recurso_destroy(recursoLiberado);
+			}
+		}
+
+		return recursoLiberado != NULL ;
+}
+
+int notificarMuerteDeadlock(char idPersonaje, datos_planificador_t *datos) {
+	int _isPersonaje(datos_personaje_t *personaje) {
+		return personaje->simbolo == idPersonaje;
+	}
+	//TODO: implementar mutex
+	datos_personaje_t *personajeMuerto = list_remove_by_condition(
+			datos->personajesBloqueados->elements, (void *) _isPersonaje);
+	header_t header;
+	header.type = NOTIFICAR_MUERTE;
+	header.length = 0;
+	int nbytes = sockets_send(personajeMuerto->sockfd, &header, '\0');
+	close(personajeMuerto->sockfd);
+	datosPersonaje_destroy(personajeMuerto);
 
 	return nbytes;
 }
