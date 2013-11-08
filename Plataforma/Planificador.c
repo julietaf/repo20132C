@@ -98,6 +98,7 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 			reenviarNotificacionMovimiento(datosPlan, personaje, &header, data);
 			break;
 		case SOLICITAR_RECURSO:
+			quantumPersonaje--;
 			sockets_send(datosPlan->sockfdNivel, &header, data);
 			gestionarSolicitudRecurso(datosPlan, personaje);
 			break;

@@ -84,12 +84,14 @@ void delegarAlPlanificador(int sockfd) {
 
 void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 		char *nombreNivel) {
-	datos_planificador_t *datosPlanificador = dictionary_get(dicPlanificadores,
-			nombreNivel);
-	//datosPlanificador->mutexColas TODO:Implementar mutex
-	queue_push(datosPlanificador->personajesListos, datosPersonaje);
-	FD_SET(datosPersonaje->sockfd, datosPlanificador->bagMaster);
-	//datosPlanificador->mutexColas TODO:Implementar mutex
+	if (dictionary_has_key(dicPlanificadores, nombreNivel)) {
+		datos_planificador_t *datosPlanificador = dictionary_get(
+				dicPlanificadores, nombreNivel);
+		//datosPlanificador->mutexColas TODO:Implementar mutex
+		queue_push(datosPlanificador->personajesListos, datosPersonaje);
+		FD_SET(datosPersonaje->sockfd, datosPlanificador->bagMaster);
+		//datosPlanificador->mutexColas TODO:Implementar mutex
+	}
 }
 
 datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje) {
