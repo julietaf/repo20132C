@@ -45,6 +45,7 @@ typedef struct {
 t_config *configFile;
 configuracion_personaje_t *config;
 t_log *logFile;
+int flagReinicioPlan = 0;
 
 void getConfiguracion(void);
 void hiloPersonaje(hilo_personaje_t *datos);
@@ -61,5 +62,12 @@ int recibirCoordenadas(int sockfdOrquestador, hilo_personaje_t *datos);
 int enviarNotificacionMovimiento(int sockfdOrquestador,
 		coordenada_t * coordenada, char id);
 int enviarSolicitudObjetivo(int sockfdOrquestador, hilo_personaje_t *datos);
+void recibirRecurso(hilo_personaje_t *datos);
+int esperarDesbloqueo(int planificadorSockfd, hilo_personaje_t *datos);
+int rutinaMuerte(int planificadorSockfd, hilo_personaje_t *datos, char* causa);
+void rutinaReinicioNivel(int sockfdOrquestador, hilo_personaje_t *datos);
+void rutinaReinicioPlan(int sockfdOrquestador, hilo_personaje_t *datos);
+void reiniciarDatosNivel(hilo_personaje_t *datos);
+void dataHiloDestroy(hilo_personaje_t* datos);
 
 #endif /* PERSONAJE_H_ */

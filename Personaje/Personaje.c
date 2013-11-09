@@ -14,18 +14,24 @@ int main(void) {
 	t_list *hilos = list_create();
 	hilo_personaje_t *dataHilo;
 
-	for (i = 0; config_get_array_value(configFile, "planDeNiveles")[i] != NULL ;
-			i++) {
-		dataHilo = crearDatosPersonaje(i);
-		pthread_create(dataHilo->hilo, NULL, (void *) hiloPersonaje,
-				(void *) dataHilo);
-		list_add(hilos, dataHilo);
-	}
+	do {
+		flagReinicioPlan = 0;
 
-	for (i = 0; list_get(hilos, i) != NULL ; i++) {
-		dataHilo = list_get(hilos, i);
-		pthread_join(*dataHilo->hilo, (void **) NULL );
-	}
+		for (i = 0; config_get_array_value(configFile, "planDeNiveles")[i] != NULL ; i++) {
+
+			dataHilo = crearDatosPersonaje(i);
+			pthread_create(dataHilo->hilo, NULL, (void *) hiloPersonaje,
+					(void *) dataHilo);
+			list_add(hilos, dataHilo);
+		}
+
+		for (i = 0; list_get(hilos, i) != NULL ; i++) {
+			dataHilo = list_get(hilos, i);
+			pthread_join(*dataHilo->hilo, (void **) NULL );
+			dataHiloDestroy(dataHilo);
+		}
+
+	} while (flagReinicioPlan == 1);
 
 	return EXIT_SUCCESS;
 }
@@ -72,33 +78,41 @@ void getConfiguracion(void) {
 }
 
 void hiloPersonaje(hilo_personaje_t *datos) {
-	fd_set bagMaster, bagEscucha;
+//	fd_set bagMaster, bagEscucha;
 	int sockfdOrquestador = sockets_createClient(datos->ipOrquestador,
 			datos->puertoOrquestador);
-	enviarHandshakePersonaje(sockfdOrquestador);
-	FD_ZERO(&bagMaster);
-	FD_ZERO(&bagEscucha);
-	FD_SET(sockfdOrquestador, &bagMaster);
-	int sockfd, sockfdMax = sockfdOrquestador, nbytes;
+//	enviarHandshakePersonaje(sockfdOrquestador);
+//	FD_ZERO(&bagMaster);
+//	FD_ZERO(&bagEscucha);
+//	FD_SET(sockfdOrquestador, &bagMaster);
+//	int sockfd, sockfdMax = sockfdOrquestador, nbytes;
 	datos->objetivoActual = 0;
 	datos->coordPosicion = malloc(sizeof(coordenada_t));
 	datos->coordPosicion->ejeX = 0;
 	datos->coordPosicion->ejeY = 0;
 
 	while (1) {
-		bagEscucha = bagMaster;
-
-		select(sockfdMax + 1, &bagEscucha, NULL, NULL, NULL );
-
-		for (sockfd = 0; sockfd < sockfdMax + 1; sockfd++) {
-			if (FD_ISSET(sockfd,&bagEscucha)) {
-				if (sockfd == sockfdOrquestador) {
-					nbytes = atenderOrquestador(sockfdOrquestador, datos);
-
-					if (nbytes == 0) //TODO: que hacer cuando la plataforma se desconecta?
-						break;
-				}
-			}
+//		bagEscucha = bagMaster;
+//
+//		select(sockfdMax + 1, &bagEscucha, NULL, NULL, NULL );
+//
+//		for (sockfd = 0; sockfd < sockfdMax + 1; sockfd++) {
+//			if (FD_ISSET(sockfd,&bagEscucha)) {
+//				if (sockfd == sockfdOrquestador) {
+//					nbytes = atenderOrquestador(sockfdOrquestador, datos);
+//
+//					if (nbytes == 0) //TODO: que hacer cuando la plataforma se desconecta?
+//						break;
+//				}
+//			}
+//		}
+		int nbytes = atenderOrquestador(sockfdOrquestador, datos);
+		if (nbytes == 0) {
+//			TODO:que hacer cuando la plataforma se desconecta?
+		}
+		if (flagReinicioPlan) {
+			rutinaReinicioPlan(sockfdOrquestador, datos);
+			break;
 		}
 	}
 }
@@ -119,14 +133,13 @@ int atenderOrquestador(int sockfdOrquestador, hilo_personaje_t *datos) {
 		nbytes = recibirCoordenadas(sockfdOrquestador, datos);
 		break;
 	case OTORGAR_RECURSO:
-		coordenadas_destroy(datos->coordObjetivo);
-		datos->coordObjetivo = NULL;
-		datos->objetivoActual++;
+		recibirRecurso(sockfdOrquestador , datos);
 		break;
-		//TODO:Faltan implementar los siguientes mensajes
 	case NEGAR_RECURSO:
+		nbytes = esperarDesbloqueo(sockfdOrquestador, datos);
 		break;
 	case NOTIFICAR_MUERTE:
+		nbytes = rutinaMuerte(sockfdOrquestador, datos, "por Enemigo");
 		break;
 	}
 
@@ -220,4 +233,90 @@ void enviarHandshakePersonaje(int sockfd) {
 	head.length = 0;
 
 	sockets_send(sockfd, &head, '\0');
+}
+
+void recibirRecurso(int sockfdOrquestador, hilo_personaje_t *datos ) {
+	coordenadas_destroy(datos->coordObjetivo);
+	datos->coordObjetivo = NULL;
+	datos->objetivoActual++;
+
+	if (datos->objetivos[datos->objetivoActual] == NULL){
+		rutinaFinalizarNivel(sockfdOrquestador, datos );
+	}
+}
+
+int esperarDesbloqueo(int sockfdOrquestador, hilo_personaje_t *datos) {
+	header_t header;
+
+	int nbytes = recv(sockfdOrquestador, &header, sizeof(header), MSG_WAITALL);
+
+	switch (header.type) {
+	case NOTIFICAR_MUERTE:
+		nbytes = rutinaMuerte(sockfdOrquestador, datos, "victima Deadlock");
+		break;
+	case OTORGAR_RECURSO:
+		recibirRecurso(datos);
+		break;
+	}
+
+	return nbytes;
+}
+
+int rutinaMuerte(int sockfdOrquestador, hilo_personaje_t *datos, char* causa) {
+
+	printf("Muerte por: %s \n", causa);
+
+	if (datos->vidas == 0) {
+		//reiniciar plan de niveles
+//		datos->vidas = config_get_int_value(configFile, "vidas");
+//		rutinaReinicioPlan(sockfdOrquestador, datos);
+		flagReinicioPlan = 1;
+	} else {
+		//reiniciar el nivel actual
+		datos->vidas--;
+		rutinaReinicioNivel(sockfdOrquestador, datos);
+	}
+	return 1;
+}
+
+void rutinaReinicioNivel(int sockfdOrquestador, hilo_personaje_t *datos) {
+	//TODO: Esto Anda?
+
+	reiniciarDatosNivel(datos);
+	close(sockfdOrquestador);
+	sockfdOrquestador = sockets_createClient(datos->ipOrquestador,
+			datos->puertoOrquestador);
+	enviarHandshakePersonaje(sockfdOrquestador);
+
+}
+
+void rutinaReinicioPlan(int sockfdOrquestador, hilo_personaje_t *datos) {
+	//TODO:
+	close(sockfdOrquestador);
+}
+
+void reiniciarDatosNivel(hilo_personaje_t *datos) {
+	datos->objetivoActual = 0;
+	if (datos->coordPosicion == NULL ) {
+		datos->coordPosicion = malloc(sizeof(coordenada_t));
+	}
+	modificarCoordenada(datos->coordPosicion, 0, 0);
+
+}
+
+void recibirRecurso(int sockfdOrquestador, hilo_personaje_t *datos ){
+	header_t header;
+	header.type = FINALIZAR_NIVEL;
+
+}
+
+void dataHiloDestroy(hilo_personaje_t* datos){
+	//TODO: HIlo????
+	free(datos->nivel);
+	free(datos->objetivos);
+	free(datos->ipOrquestador);
+	free(datos->puertoOrquestador);
+	coordenadas_destroy(datos->coordPosicion);
+	coordenadas_destroy(datos->coordObjetivo);
+
 }
