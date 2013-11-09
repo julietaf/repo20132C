@@ -183,3 +183,15 @@ configuracion_plataforma_t *getConfiguracion(void) {
 
 	return config;
 }
+
+void datosPersonaje_destroy(datos_personaje_t *self) {
+	if (self->coordObjetivo != NULL ) {
+		coordenadas_destroy(self->coordObjetivo);
+	}
+
+	if (self->ubicacionActual != NULL ) {
+		coordenadas_destroy(self->ubicacionActual);
+	}
+
+	free(self);
+}
