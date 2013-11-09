@@ -87,11 +87,20 @@ void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 	if (dictionary_has_key(dicPlanificadores, nombreNivel)) {
 		datos_planificador_t *datosPlanificador = dictionary_get(
 				dicPlanificadores, nombreNivel);
+		notificarNivel(datosPlanificador->sockfdNivel, datosPersonaje->simbolo);
 		//datosPlanificador->mutexColas TODO:Implementar mutex
 		queue_push(datosPlanificador->personajesListos, datosPersonaje);
 		FD_SET(datosPersonaje->sockfd, datosPlanificador->bagMaster);
 		//datosPlanificador->mutexColas TODO:Implementar mutex
 	}
+}
+
+int notificarNivel(int sockfdNivel, char simbolo) {
+	header_t header;
+	header.type = NOTIFICAR_DATOS_PERSONAJE;
+	header.length = sizeof(char);
+
+	return sockets_send(sockfdNivel, &header, &simbolo);
 }
 
 datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje) {

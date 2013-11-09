@@ -13,7 +13,7 @@ void moverPersonaje(datos_planificador_t *datos);
 void seleccionarPorRoundRobin(datos_planificador_t *datosPlan);
 void seleccionarPorSRDF(datos_planificador_t *datos);
 void enviarTurnoConcedido(datos_personaje_t *personaje);
-void atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje);
+int atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje);
 int atenderPedidoNivel(datos_planificador_t *datos);
 int gestionarUbicacionCaja(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje);
@@ -44,14 +44,14 @@ void planificador(datos_planificador_t *datos) {
 	FD_SET(datos->sockfdNivel, datos->bagMaster);
 	int retval, sockfdMax = datos->sockfdNivel;
 	struct timeval timeout;
-	int usegundos = (datos->retardo * 1000000);
-	int sec = div(usegundos, 1000000).quot;
-	int usec = div(usegundos, 1000000).rem;
+//	int usegundos = (datos->retardo * 1000000);
+//	int sec = div(usegundos, 1000000).quot;
+//	int usec = div(usegundos, 1000000).rem;
 
 	while (1) {
 		bagEscucha = *datos->bagMaster;
-		timeout.tv_sec = sec;
-		timeout.tv_usec = usec;
+//		timeout.tv_sec = sec;
+		timeout.tv_usec = datos->retardo;
 		retval = select(sockfdMax + 1, &bagEscucha, NULL, NULL, &timeout);
 
 		if (retval == -1) //Ocurrio un error
@@ -68,11 +68,18 @@ int atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 	int nbytes, sockfd;
 
 	for (sockfd = 0; sockfd <= sockfdMax; sockfd++) {
-		if (sockfd == datos->sockfdNivel) {
-			nbytes = atenderPedidoNivel(datos);
-		} else {
-			atenderPedidoPersonaje(datos, sockfd);
+		if (FD_ISSET(sockfd,bagEscucha)) {
+			if (sockfd == datos->sockfdNivel) {
+				nbytes = atenderPedidoNivel(datos);
+			} else {
+				nbytes = atenderPedidoPersonaje(datos, sockfd);
+			}
 		}
+	}
+
+	if (sockfd == 0) {
+		close(sockfd);
+		FD_CLR(sockfd, datos->bagMaster);
 	}
 
 	return nbytes;
@@ -157,16 +164,17 @@ void enviarTurnoConcedido(datos_personaje_t *personaje) {
 	sockets_send(personaje->sockfd, &header, '\0');
 }
 
-void atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje) {
+int atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje) {
 	header_t header;
-
-	recv(sockfdPersonaje, &header, sizeof(header), MSG_WAITALL);
+	int nbytes = recv(sockfdPersonaje, &header, sizeof(header), MSG_WAITALL);
 
 	switch (header.type) {
 	case FINALIZAR_NIVEL:
 		//TODO:Realizar tareas de finalización.
 		break;
 	}
+
+	return nbytes;
 }
 
 int atenderPedidoNivel(datos_planificador_t *datos) {
@@ -187,7 +195,7 @@ int atenderPedidoNivel(datos_planificador_t *datos) {
 	case VICTIMA_ENEMIGO:
 		nbytes = removerPersonaje(&header, datos);
 		break;
-		//TODO: implementar mensajes: VICTIMA_ENEMIGO, NOTIFICACION_RECURSOS_LIBERADOS
+		//TODO: implementar mensajes: NOTIFICACION_RECURSOS_LIBERADOS
 	}
 
 	return nbytes;

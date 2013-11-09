@@ -68,5 +68,6 @@ datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje);
 void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 		char *nombreNivel);
 void datosPersonaje_destroy(datos_personaje_t *self);
+int notificarNivel(int sockfdNivel,char simbolo);
 
 #endif /* ORQUESTADOR_H_ */
