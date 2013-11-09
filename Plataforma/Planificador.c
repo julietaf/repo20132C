@@ -15,7 +15,7 @@ void seleccionarPorSRDF(datos_planificador_t *datos);
 void enviarTurnoConcedido(datos_personaje_t *personaje);
 void atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje);
 int atenderPedidoNivel(datos_planificador_t *datos);
-void gestionarUbicacionCaja(datos_planificador_t *datosPlan,
+int gestionarUbicacionCaja(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje);
 void reenviarUbicacionCaja(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje, header_t *header, char *data);
@@ -33,6 +33,10 @@ t_list *desbloquearPersonajes(t_list *recursosLiberados,
 		datos_planificador_t *datos);
 int usarRecurso(char idObjetivo, t_list *recursosLiberados, t_list *recUsados,
 		char simboloPersonaje);
+int informarDesbloqueo(datos_personaje_t *perBloqueado);
+void desbloquearPersonaje(datos_personaje_t *perDesbloqueado,
+		datos_planificador_t *datos);
+int informarRecursosUsados(t_list *recursosUsados, datos_planificador_t *datos);
 
 void planificador(datos_planificador_t *datos) {
 	fd_set bagEscucha;
@@ -195,7 +199,19 @@ int removerPersonaje(header_t *header, datos_planificador_t *datos) {
 			header->length - sizeof(char));
 	free(data);
 	nbytes = notificarMuerteDeadlock(idPersonaje, datos);
-	desbloquearPersonajes(recursosLiberados, datos);
+	t_list *recursosUsados = desbloquearPersonajes(recursosLiberados, datos);
+	nbytes = informarRecursosUsados(recursosUsados, datos);
+	list_destroy_and_destroy_elements(recursosUsados, (void *) free);
+
+	return nbytes;
+}
+
+int informarRecursosUsados(t_list *recursosUsados, datos_planificador_t *datos) {
+	header_t header;
+	header.type = NOTIFICACION_RECURSOS_ASIGNADOS;
+	char *serialized = listaRecursos_serializer(recursosUsados, &header.length);
+	int nbytes = sockets_send(datos->sockfdNivel, &header, serialized);
+	free(serialized);
 
 	return nbytes;
 }
@@ -209,23 +225,24 @@ t_list *desbloquearPersonajes(t_list *recursosLiberados,
 		datos_personaje_t *perBloqueado, *perDesbloqueado;
 		int i;
 
-		for (i = 0; i < datos->personajesBloqueados->elements; i++) {
+		for (i = 0; i < datos->personajesBloqueados->elements->elements_count;
+				i++) {
 			perBloqueado = list_get(datos->personajesBloqueados->elements, i);
 			int fueUsado = usarRecurso(perBloqueado->objetivo,
 					recursosLiberados, recUsados, perBloqueado->simbolo);
 
 			if (fueUsado) {
 				list_add(perDesbloqueados, perBloqueado);
-//				informarDesbloqueo(perBloqueado);
+				informarDesbloqueo(perBloqueado);
 
-				if (datos->personajesBloqueados->elements == 0)
+				if (recursosLiberados->elements_count == 0)
 					break;
 			}
 		}
 
 		for (i = 0; i < perDesbloqueados->elements_count; i++) {
 			perDesbloqueado = list_get(perDesbloqueados, i);
-//			desbloquearPersonaje(perDesbloqueado, datos);
+			desbloquearPersonaje(perDesbloqueado, datos);
 		}
 
 		list_destroy(perDesbloqueados);
@@ -234,30 +251,53 @@ t_list *desbloquearPersonajes(t_list *recursosLiberados,
 	return recUsados;
 }
 
-int usarRecurso(char simboloRecurso, t_list *recursosLiberados, t_list *recursosUsados,
-		char simboloPersonaje) {
-		int _is_recurso(recurso_t *recurso) {
-			return recurso->id == simboloRecurso;
+void desbloquearPersonaje(datos_personaje_t *perDesbloqueado,
+		datos_planificador_t *datos) {
+	int _is_personaje(datos_personaje_t *personaje) {
+		return personaje->simbolo == perDesbloqueado->simbolo;
+	}
+
+	t_list *personajesBloqueados = datos->personajesBloqueados->elements;
+	t_queue *personajesListos = datos->personajesListos;
+	datos_personaje_t *personajeDesbloqueado = list_remove_by_condition(
+			personajesBloqueados, (void *) _is_personaje);
+	coordenadas_destroy(perDesbloqueado->coordObjetivo);
+	perDesbloqueado->coordObjetivo = NULL;
+	queue_push(personajesListos, personajeDesbloqueado);
+}
+
+int usarRecurso(char simboloRecurso, t_list *recursosLiberados,
+		t_list *recursosUsados, char simboloPersonaje) {
+	int _is_recurso(recurso_t *recurso) {
+		return recurso->id == simboloRecurso;
+	}
+
+	recurso_t *recursoLiberado = list_find(recursosLiberados,
+			(void *) _is_recurso);
+
+	if (recursoLiberado != NULL ) {
+		recursoLiberado->quantity--;
+		personaje_recurso_t *personajeDesbloqueado = malloc(
+				sizeof(personaje_recurso_t));
+		personajeDesbloqueado->idRecurso = recursoLiberado->id;
+		personajeDesbloqueado->idPersonaje = simboloPersonaje;
+		list_add(recursosUsados, personajeDesbloqueado);
+
+		if (recursoLiberado->quantity == 0) {
+			list_remove_by_condition(recursosLiberados, (void *) _is_recurso);
+			recurso_destroy(recursoLiberado);
 		}
+	}
 
-		recurso_t *recursoLiberado = list_find(recursosLiberados,
-				(void *) _is_recurso);
+	return recursoLiberado != NULL ;
+}
 
-		if (recursoLiberado != NULL ) {
-			recursoLiberado->quantity--;
-//			datos_personaje_t *personajeDesbloqueado = malloc(
-//					sizeof(datos_personaje_t));
-//			personajeDesbloqueado->idRecurso = recursoLiberado->id;
-//			personajeDesbloqueado->idPersonaje = simboloPersonaje;
-//			list_add(recursosUsados, personajeDesbloqueado);
+int informarDesbloqueo(datos_personaje_t *perDesbloqueado) {
+	header_t header;
+	header.type = OTORGAR_RECURSO;
+	header.length = 0;
 
-			if (recursoLiberado->quantity == 0) {
-				list_remove_by_condition(recursosLiberados, (void *) _is_recurso);
-				recurso_destroy(recursoLiberado);
-			}
-		}
-
-		return recursoLiberado != NULL ;
+	return sockets_send(perDesbloqueado->sockfd, &header, '\0');
 }
 
 int notificarMuerteDeadlock(char idPersonaje, datos_planificador_t *datos) {
@@ -297,19 +337,22 @@ void reenviarUbicacionCaja(datos_planificador_t *datosPlan,
 	sockets_send(datosPlan->sockfdNivel, header, data);
 }
 
-void gestionarUbicacionCaja(datos_planificador_t *datosPlan,
+int gestionarUbicacionCaja(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje) {
 	header_t header;
 
-	recv(datosPlan->sockfdNivel, &header, sizeof(header), MSG_WAITALL);
+	int nbytes = recv(datosPlan->sockfdNivel, &header, sizeof(header),
+			MSG_WAITALL);
 
 	if (header.type == UBICACION_CAJA) {
 		char *respuesta = malloc(header.length);
 		recv(datosPlan->sockfdNivel, respuesta, header.length, MSG_WAITALL);
 		personaje->coordObjetivo = coordenadas_deserializer(respuesta);
-		sockets_send(personaje->sockfd, &header, respuesta);
+		nbytes = sockets_send(personaje->sockfd, &header, respuesta);
 		free(respuesta);
 	}
+
+	return nbytes;
 }
 
 void reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
