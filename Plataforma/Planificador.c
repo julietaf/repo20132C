@@ -37,6 +37,9 @@ int informarDesbloqueo(datos_personaje_t *perBloqueado);
 void desbloquearPersonaje(datos_personaje_t *perDesbloqueado,
 		datos_planificador_t *datos);
 int informarRecursosUsados(t_list *recursosUsados, datos_planificador_t *datos);
+int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje, char *data);
+int informarSolicitudRecurso(datos_personaje_t *personaje, int type);
 
 void planificador(datos_planificador_t *datos) {
 	fd_set bagEscucha;
@@ -50,8 +53,9 @@ void planificador(datos_planificador_t *datos) {
 
 	while (1) {
 		bagEscucha = *datos->bagMaster;
-//		timeout.tv_sec = sec;
+		timeout.tv_sec = 1;
 		timeout.tv_usec = datos->retardo;
+
 		retval = select(sockfdMax + 1, &bagEscucha, NULL, NULL, &timeout);
 
 		if (retval == -1) //Ocurrio un error
@@ -119,7 +123,7 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 			break;
 		case SOLICITAR_RECURSO:
 			quantumPersonaje--;
-			sockets_send(datosPlan->sockfdNivel, &header, data);
+			reenviarSolicitudRecurso(datosPlan, personaje, data);
 			gestionarSolicitudRecurso(datosPlan, personaje);
 			break;
 		}
@@ -129,6 +133,22 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 
 	if (quantumPersonaje == 0)
 		queue_push(datosPlan->personajesListos, personaje);
+}
+
+int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje, char *data) {
+	header_t header;
+	header.type = SOLICITAR_RECURSO;
+	personaje_recurso_t *personajeRecurso = malloc(sizeof(personaje_recurso_t));
+	personajeRecurso->idPersonaje = personaje->simbolo;
+	personajeRecurso->idRecurso = data[0];
+	char *serialized = personajeRecurso_serializer(personajeRecurso,
+			&header.length);
+	int nbytes = sockets_send(datosPlan->sockfdNivel, &header, serialized);
+	free(serialized);
+	free(personajeRecurso);
+
+	return nbytes;
 }
 
 void seleccionarPorSRDF(datos_planificador_t *datosPlan) {
@@ -400,6 +420,15 @@ void gestionarSolicitudRecurso(datos_planificador_t *datosPlan,
 //		pthread_mutex_unlock(datosPlan->mutexColas);
 		break;
 	}
+
+	informarSolicitudRecurso(personaje, header.type);
+}
+
+int informarSolicitudRecurso(datos_personaje_t *personaje, int type) {
+	header_t header;
+	header.type = type;
+	header.length = 0;
+	return sockets_send(personaje->sockfd, &header, '\0');
 }
 
 datos_personaje_t *seleccionarCaminoMasCorto(t_queue *colaPersonajes) {
