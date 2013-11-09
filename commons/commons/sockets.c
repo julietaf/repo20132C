@@ -382,8 +382,7 @@ personaje_interbloqueado_t* crearNodoInterbloqueado(char id) {
 
 //-------------------------------Personaje-Recurso------------------------------
 
-char *personajeRecuros_serializer(personaje_recurso_t *self,
-		int16_t *length) {
+char *personajeRecuros_serializer(personaje_recurso_t *self, int16_t *length) {
 	char *serialized = malloc(sizeof(char) + sizeof(char));
 	int offset = 0, tmp_size = 0;
 
@@ -398,8 +397,7 @@ char *personajeRecuros_serializer(personaje_recurso_t *self,
 }
 
 personaje_recurso_t *personajeRecurso_deserializer(char *data) {
-	personaje_recurso_t *personaje = malloc(
-			sizeof(personaje_recurso_t));
+	personaje_recurso_t *personaje = malloc(sizeof(personaje_recurso_t));
 	int offset = 0, tmp_size = 0;
 
 	memcpy(&personaje->idPersonaje, data, tmp_size = sizeof(char));
@@ -409,8 +407,6 @@ personaje_recurso_t *personajeRecurso_deserializer(char *data) {
 
 	return personaje;
 }
-
-
 
 char *notificacionDatosPersonaje_serializer(
 		notificacion_datos_personaje_t *datos, int16_t *length) {
@@ -457,7 +453,7 @@ char *informacionPlanificacion_serializer(informacion_planificacion_t *self,
 	int offset = 0, tmp_size = 0;
 
 	memcpy(serialized, self->nombreNivel,
-			tmp_size = sizeof(strlen(self->nombreNivel) + 1));
+			tmp_size = strlen(self->nombreNivel) + 1);
 	offset = tmp_size;
 
 	memcpy(serialized + offset, &self->algoritmo, tmp_size = sizeof(int));
@@ -476,7 +472,8 @@ char *informacionPlanificacion_serializer(informacion_planificacion_t *self,
 
 informacion_planificacion_t *informacionPlanificacion_deserializer(
 		char *serialized) {
-	informacion_planificacion_t *self = malloc(sizeof(coordenada_t));
+	informacion_planificacion_t *self = malloc(
+			sizeof(informacion_planificacion_t));
 	int offset = 0, tmp_size = 0;
 
 	for (tmp_size = 1; serialized[tmp_size - 1] != '\0'; tmp_size++)
@@ -498,9 +495,9 @@ informacion_planificacion_t *informacionPlanificacion_deserializer(
 }
 
 void informacionPlanificacion_destroy(informacion_planificacion_t*self) {
+	free(self->nombreNivel);
 	free(self);
 }
 
 //
-
 
