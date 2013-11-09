@@ -84,7 +84,7 @@ int conectarOrquestador();
 void hacerHandshake(int sockfdReceptor);
 void enviarDatosAlgoritmo();
 void recibirDatosPlanificador();
-void atenderMensajePlanificador(int sockfd);
+int atenderMensajePlanificador(int sockfd);
 int validarRecive(int sockfd, header_t* h);
 void obtenerDatosAlgorimo(informacion_planificacion_t* datosAlgoritmo);
 void tratarNuevoPersonaje(char* data);

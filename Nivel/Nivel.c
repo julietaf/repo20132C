@@ -8,6 +8,9 @@
 #include "Nivel.h"
 
 int main(void) {
+	fd_set bagMaster, bagEscucha;
+	int sockfd, sockfdMax = plataformaSockfd, nbytes;
+	int notifyfd;
 
 	listaRecursos = list_create();
 	listaPersonajes = list_create();
@@ -28,13 +31,37 @@ int main(void) {
 	log_info(logFile, "Esperando conexiones en ip: %s port: %s",
 			configObj->localhostaddr, configObj->localhostport);
 	crearHiloEnemigo();
-//	pthread_t hEnemigo;
-//	pthread_create(&hEnemigo, NULL, (void*) enemigo, NULL );
-	while (1){
-//		atenderMensajePlanificador(plataformaSockfd);
+
+	notifyfd = getNotifyFileDescriptor();
+	FD_ZERO(&bagMaster);
+	FD_ZERO(&bagEscucha);
+	FD_SET(plataformaSockfd, &bagMaster);
+
+	if (notifyfd > sockfdMax) {
+		sockfdMax = notifyfd;
 	}
-	//TODO: MUchas muy importantes cosa//
-//	pthread_join(hEnemigo, (void **) NULL );
+
+	while (1) {
+
+		bagEscucha = bagMaster;
+
+		select(sockfdMax + 1, &bagEscucha, NULL, NULL, NULL );
+
+		for (sockfd = 0; sockfd < sockfdMax + 1; sockfd++) {
+			if (FD_ISSET(sockfd,&bagEscucha)) {
+				if (sockfd == plataformaSockfd) {
+					nbytes = atenderMensajePlanificador(plataformaSockfd);
+				}else if (sockfd == notifyfd){
+					tratarModificacionAlgoritmo(notifyfd);
+				}
+
+				if (nbytes == 0){
+					//TODO:
+				}
+			}
+		}
+	}
+
 	return EXIT_SUCCESS;
 }
 
@@ -258,29 +285,30 @@ void recibirDatosPlanificador() {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void atenderMensajePlanificador(int sockfd) {
+int atenderMensajePlanificador(int sockfd) {
 	header_t h;
+	int nbytes;
 	if (validarRecive(sockfd, &h)) {
 		char* data = malloc(h.length);
 		switch (h.type) {
 		case NOTIFICAR_DATOS_PERSONAJE:
-			recv(sockfd, data, h.length, MSG_WAITALL);
+			nbytes = recv(sockfd, data, h.length, MSG_WAITALL);
 			tratarNuevoPersonaje(data);
 			break;
 		case UBICACION_CAJA:
-			recv(sockfd, data, h.length, MSG_WAITALL);
+			nbytes = recv(sockfd, data, h.length, MSG_WAITALL);
 			tratarSolicitudUbicacionCaja(data);
 			break;
 		case NOTIFICACION_MOVIMIENTO:
-			recv(sockfd, data, h.length, MSG_WAITALL);
+			nbytes = recv(sockfd, data, h.length, MSG_WAITALL);
 			tratarMovimiento(data);
 			break;
 		case SOLICITAR_RECURSO:
-			recv(sockfd, data, h.length, MSG_WAITALL);
+			nbytes = recv(sockfd, data, h.length, MSG_WAITALL);
 			tratarSolicitudRecurso(data);
 			break;
 		case PERSONAJE_FINALIZO:
-			recv(sockfd, data, h.length, MSG_WAITALL);
+			nbytes = recv(sockfd, data, h.length, MSG_WAITALL);
 			tratarFinalizacionPersonaje(data);
 			break;
 		default:
@@ -291,6 +319,7 @@ void atenderMensajePlanificador(int sockfd) {
 		}
 		free(data);
 	}
+	return nbytes;
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -441,7 +470,7 @@ void notificarMuertePersonaje(char id, int causa) {
 	int16_t length;
 
 	h.type = causa;
-	h.length = sizeof(char) + 1;
+	h.length = sizeof(char);
 
 	adquiridos = getObjetosAdquiridosSerializable(listaPersonajes, id);
 	char* adqData = listaRecursos_serializer(adquiridos, &length);
@@ -766,11 +795,12 @@ int validarPosicionesEnemigo(t_list* bufferMovimiento) {
 	for (i = 0; i < list_size(bufferMovimiento); i++) {
 		coordenada_t* coordenadaTemp; //= malloc(sizeof(coordenada_t));
 		coordenadaTemp = list_get(bufferMovimiento, i);
-		log_debug(logFile, "Validando buffer %d, posiicion (%d, %d)", i, coordenadaTemp->ejeX, coordenadaTemp->ejeY);
+		log_debug(logFile, "Validando buffer %d, posiicion (%d, %d)", i,
+				coordenadaTemp->ejeX, coordenadaTemp->ejeY);
 		r = validarPosicionEnemigo(coordenadaTemp);
 //		free (coordenadaTemp);
 		if (!r) {
-			list_clean_and_destroy_elements(bufferMovimiento, (void*)free);
+			list_clean_and_destroy_elements(bufferMovimiento, (void*) free);
 			return 0;
 		}
 
@@ -819,14 +849,13 @@ int validarPosicionEnemigo(coordenada_t* posicion) {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void deadLock() {
-	while (1){
+	while (1) {
 		int wait = configObj->deadlockTime;
 		sleep(wait);
 		gestionarDeadLock();
-		
+
 	}
-	
-	
+
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -837,22 +866,20 @@ void gestionarDeadLock() {
 	t_list* bloqueados = obtenerPersonajesEnDL(listaRecursos, listaPersonajes);
 	ITEM_NIVEL * temp = NULL;
 	ITEM_NIVEL * menor = NULL;
-	
-	if (list_is_empty(bloqueados)){
+
+	if (list_is_empty(bloqueados)) {
 		return;
 	}
-	
+
 	menor = list_get(bloqueados, 0);
-	for (i = 0; i < list_size(bloqueados); i++){
+	for (i = 0; i < list_size(bloqueados); i++) {
 		temp = list_get(bloqueados, i);
-		if (temp->socket < menor->socket){
+		if (temp->socket < menor->socket) {
 			menor = temp;
 		}
 	}
-	
+
 	notificarMuertePersonaje(menor->id, VICTIMA_DEADLOCK);
-	
-	
 
 }
 
