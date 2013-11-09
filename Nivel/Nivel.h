@@ -81,7 +81,7 @@ void crearCajasConVector(char** array);
 void inicializarSockEscucha();
 void inicializarConexionPlataforma();
 int conectarOrquestador();
-void hacerHandshake(int sockfdReceptor);
+int hacerHandshake(int sockfdReceptor);
 void enviarDatosAlgoritmo();
 void recibirDatosPlanificador();
 int atenderMensajePlanificador(int sockfd);

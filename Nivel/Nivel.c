@@ -27,7 +27,7 @@ int main(void) {
 	inicializarConfiguracionCajas();
 	nivel_gui_dibujar(listaRecursos, configObj->nombre);
 //	inicializarSockEscucha();
-//	inicializarConexionPlataforma();
+	inicializarConexionPlataforma();
 	log_info(logFile, "Esperando conexiones en ip: %s port: %s",
 			configObj->localhostaddr, configObj->localhostport);
 	crearHiloEnemigo();
@@ -194,7 +194,11 @@ void separador_log(char* head) {
 
 void inicializarConexionPlataforma() {
 
-	plataformaSockfd = conectarOrquestador();
+	do {
+		sleep(1);
+		plataformaSockfd = conectarOrquestador();
+	}while(plataformaSockfd == -1);
+
 	hacerHandshake(plataformaSockfd);
 	enviarDatosAlgoritmo();
 //	recibirDatosPlanificador();
@@ -210,7 +214,7 @@ int conectarOrquestador() {
 
 	if (orquestadorSockfd == -1) {
 		log_error(logFile, "Conexion con orquestador fallo");
-		exit(EXIT_FAILURE);
+//		exit(EXIT_FAILURE);
 	} else {
 		log_info(logFile, "Conectado con orquestador, ip: %s, port: %s",
 				configObj->orquestadoraddr, configObj->orquestadorport);
@@ -221,14 +225,16 @@ int conectarOrquestador() {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void hacerHandshake(int sockfdReceptor) {
+int hacerHandshake(int sockfdReceptor) {
 	//Envio mi hanshake
+	int r;
 	header_t header;
 	header.type = HANDSHAKE_NIVEL;
 	header.length = 0;
 	sockets_send(sockfdReceptor, &header, '\0');
 	//Espero hanshake de vuelta
-	if (recv(sockfdReceptor, &header, sizeof(header), MSG_WAITALL) == 0) {
+	r = recv(sockfdReceptor, &header, sizeof(header), MSG_WAITALL);
+	if ( r  == 0) {
 		log_error(logFile, "Conexion al tratar de hacer handshake.");
 	}
 	switch (header.type) {
@@ -241,6 +247,7 @@ void hacerHandshake(int sockfdReceptor) {
 	default:
 		log_error(logFile, "Handshake no reconocido.");
 	}
+	return r;
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------

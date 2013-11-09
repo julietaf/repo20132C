@@ -184,6 +184,9 @@ int atenderPedidoNivel(datos_planificador_t *datos) {
 	case VICTIMA_DEADLOCK:
 		nbytes = removerPersonaje(&header, datos);
 		break;
+	case VICTIMA_ENEMIGO:
+		nbytes = removerPersonaje(&header, datos);
+		break;
 		//TODO: implementar mensajes: VICTIMA_ENEMIGO, NOTIFICACION_RECURSOS_LIBERADOS
 	}
 

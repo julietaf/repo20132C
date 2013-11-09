@@ -81,12 +81,13 @@ void hiloPersonaje(hilo_personaje_t *datos) {
 //	fd_set bagMaster, bagEscucha;
 	int sockfdOrquestador = sockets_createClient(datos->ipOrquestador,
 			datos->puertoOrquestador);
-//	enviarHandshakePersonaje(sockfdOrquestador);
+	enviarHandshakePersonaje(sockfdOrquestador);
 //	FD_ZERO(&bagMaster);
 //	FD_ZERO(&bagEscucha);
 //	FD_SET(sockfdOrquestador, &bagMaster);
 //	int sockfd, sockfdMax = sockfdOrquestador, nbytes;
 	datos->objetivoActual = 0;
+	datos->coordObjetivo = NULL;
 	datos->coordPosicion = malloc(sizeof(coordenada_t));
 	datos->coordPosicion->ejeX = 0;
 	datos->coordPosicion->ejeY = 0;
@@ -130,7 +131,7 @@ int atenderOrquestador(int sockfdOrquestador, hilo_personaje_t *datos) {
 		nbytes = realizarMovimiento(sockfdOrquestador, datos);
 		break;
 	case UBICACION_CAJA:
-		nbytes = recibirCoordenadas(sockfdOrquestador, datos);
+		nbytes = recibirCoordenadas(sockfdOrquestador, datos, header);
 		break;
 	case OTORGAR_RECURSO:
 		recibirRecurso(sockfdOrquestador , datos);
@@ -191,12 +192,9 @@ int enviarNotificacionMovimiento(int sockfdOrquestador,
 	return nbytes;
 }
 
-int recibirCoordenadas(int sockfdOrquestador, hilo_personaje_t *datos) {
-	header_t header;
-	int nbytes = recv(sockfdOrquestador, &header, sizeof(header_t),
-			MSG_WAITALL);
+int recibirCoordenadas(int sockfdOrquestador, hilo_personaje_t *datos, header_t header) {
 	char *serialized = malloc(header.length);
-	nbytes = recv(sockfdOrquestador, serialized, header.length, MSG_WAITALL);
+	int nbytes = recv(sockfdOrquestador, serialized, header.length, MSG_WAITALL);
 	datos->coordObjetivo = coordenadas_deserializer(serialized);
 	free(serialized);
 
@@ -255,7 +253,7 @@ int esperarDesbloqueo(int sockfdOrquestador, hilo_personaje_t *datos) {
 		nbytes = rutinaMuerte(sockfdOrquestador, datos, "victima Deadlock");
 		break;
 	case OTORGAR_RECURSO:
-		recibirRecurso(datos);
+		recibirRecurso(sockfdOrquestador, datos);
 		break;
 	}
 
@@ -304,9 +302,9 @@ void reiniciarDatosNivel(hilo_personaje_t *datos) {
 
 }
 
-void recibirRecurso(int sockfdOrquestador, hilo_personaje_t *datos ){
-	header_t header;
-	header.type = FINALIZAR_NIVEL;
+void rutinaFinalizarNivel(int sockfdOrquestador, hilo_personaje_t *datos ){
+//	header_t header;
+//	header.type = FINALIZAR_NIVEL;
 
 }
 
