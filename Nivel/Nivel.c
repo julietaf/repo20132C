@@ -26,10 +26,7 @@ int main(void) {
 	inicializarInterfazGrafica();
 	inicializarConfiguracionCajas();
 	nivel_gui_dibujar(listaRecursos, configObj->nombre);
-//	inicializarSockEscucha();
 	inicializarConexionPlataforma();
-	log_info(logFile, "Esperando conexiones en ip: %s port: %s",
-			configObj->localhostaddr, configObj->localhostport);
 	crearHiloEnemigo();
 
 	notifyfd = getNotifyFileDescriptor();
@@ -201,7 +198,6 @@ void inicializarConexionPlataforma() {
 
 	hacerHandshake(plataformaSockfd);
 	enviarDatosAlgoritmo();
-//	recibirDatosPlanificador();
 
 }
 
@@ -294,8 +290,8 @@ void recibirDatosPlanificador() {
 
 int atenderMensajePlanificador(int sockfd) {
 	header_t h;
-	int nbytes;
-	if (validarRecive(sockfd, &h)) {
+	int nbytes = validarRecive(sockfd, &h);
+	if (nbytes) {
 		char* data = malloc(h.length);
 		switch (h.type) {
 		case NOTIFICAR_DATOS_PERSONAJE:
@@ -673,7 +669,6 @@ void tratarModificacionAlgoritmo(int file_descriptor) {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void enemigo(int idEnemigo) {
-//	t_list* bufferMovimiento = NULL;
 	t_list* bufferMovimiento = list_create();
 	coordenada_t* posicion = malloc(sizeof(coordenada_t));
 	agregarEnemigo(idEnemigo, posicion);
@@ -710,7 +705,13 @@ void agregarEnemigo(int idEnemigo, coordenada_t* posicion) {
 
 void cazarPersonajes(t_list* bufferMovimiento, coordenada_t* posicion) {
 //	sleep(configObj->sleepEnemigos);
-	sleep(1);
+	int usegundos = (configObj->sleepEnemigos * 1000000);
+	//en el caseo de que al pasarlo a segundos sea con fraccion
+	int sec = div(usegundos, 1000000000).quot;// para sleep
+//	int usec = div(usegundos, 1000000000).rem;// para usleep
+	log_info(logFile, "Retardo enemigo: %d", sec);
+	sleep(sec);
+
 	if (hayPersonajes()) {
 		perseguirPersonaje(posicion);
 	} else {
