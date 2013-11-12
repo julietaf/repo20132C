@@ -101,7 +101,7 @@ void moverPersonaje(datos_planificador_t *datos) {
 }
 
 void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
-//TODO: implementar mutex
+	//TODO: implementar mutex
 	int quantumPersonaje = datosPlan->quatum;
 	datos_personaje_t *personaje = queue_pop(datosPlan->personajesListos);
 
@@ -126,13 +126,18 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 			reenviarSolicitudRecurso(datosPlan, personaje, data);
 			gestionarSolicitudRecurso(datosPlan, personaje);
 			break;
+		case PERSONAJE_FINALIZO:
+			//TODO:implementar finalizacion de nivel
+			break;
 		}
 
 		free(data);
-	}
 
-	if (quantumPersonaje == 0)
-		queue_push(datosPlan->personajesListos, personaje);
+		if (quantumPersonaje == 0)
+			queue_push(datosPlan->personajesListos, personaje);
+		else
+			sleep(1); //TODO: implementar el retardo
+	}
 }
 
 int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
@@ -155,26 +160,32 @@ void seleccionarPorSRDF(datos_planificador_t *datosPlan) {
 	datos_personaje_t *personaje = seleccionarCaminoMasCorto(
 			datosPlan->personajesListos);
 	header_t header;
+	char *data;
 
-	enviarTurnoConcedido(personaje);
-	recv(personaje->sockfd, &header, sizeof(header_t), MSG_WAITALL);
-	char *data = malloc(header.length);
-	recv(personaje->sockfd, data, header.length, MSG_WAITALL);
+	do {
+		enviarTurnoConcedido(personaje);
+		recv(personaje->sockfd, &header, sizeof(header_t), MSG_WAITALL);
+		data = malloc(header.length);
+		recv(personaje->sockfd, data, header.length, MSG_WAITALL);
 
-	while (header.type != SOLICITAR_RECURSO) {
 		switch (header.type) {
 		case UBICACION_CAJA:
 			reenviarUbicacionCaja(datosPlan, personaje, &header, data);
 			gestionarUbicacionCaja(datosPlan, personaje);
+			sleep(1); //TODO:implementar el retardo
 			break;
 		case NOTIFICACION_MOVIMIENTO:
 			reenviarNotificacionMovimiento(datosPlan, personaje, &header, data);
+			sleep(1); //TODO:implementar el retardo
+			break;
+		case SOLICITAR_RECURSO:
+			reenviarSolicitudRecurso(datosPlan, personaje, data);
+			gestionarSolicitudRecurso(datosPlan, personaje);
 			break;
 		}
-	}
 
-	sockets_send(datosPlan->sockfdNivel, &header, data);
-	gestionarSolicitudRecurso(datosPlan, personaje);
+		free(data);
+	} while (header.type != SOLICITAR_RECURSO);
 }
 
 void enviarTurnoConcedido(datos_personaje_t *personaje) {
