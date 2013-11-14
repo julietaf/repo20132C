@@ -382,7 +382,7 @@ personaje_interbloqueado_t* crearNodoInterbloqueado(char id) {
 
 //-------------------------------Personaje-Recurso------------------------------
 
-char *personajeRecuros_serializer(personaje_recurso_t *self, int16_t *length) {
+char *personajeRecurso_serializer(personaje_recurso_t *self, int16_t *length) {
 	char *serialized = malloc(sizeof(char) + sizeof(char));
 	int offset = 0, tmp_size = 0;
 
