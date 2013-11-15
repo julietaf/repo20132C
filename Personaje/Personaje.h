@@ -42,6 +42,7 @@ typedef struct {
 	coordenada_t *coordObjetivo;
 	coordenada_t *coordPosicion;
 	int objetivoActual;
+	int sockfdPlanificador;
 } hilo_personaje_t;
 
 typedef void (*funcPtr)();
@@ -49,7 +50,8 @@ typedef void (*funcPtr)();
 t_config *configFile;
 configuracion_personaje_t *config;
 t_log *logFile;
-int flagReinicioPlan = 0;
+int flagReinicioPlan = 0, contItentos = 0;
+t_list * hilos;
 pthread_mutex_t *mutexContadorVidas;
 
 void getConfiguracion(void);
@@ -59,23 +61,24 @@ void enviarHandshakePersonaje(int sockfd);
 char *getObjetivoKey(char *nombreNivel);
 void perderVida(char* motivo);
 void reiniciarNivel(hilo_personaje_t* personaje, int nivelAReiniciar);
-int atenderOrquestador(int sockfdOrquestador, hilo_personaje_t *datos);
-int enviarDatosPersonaje(int sockfdOrquestador, hilo_personaje_t *datos);
-int realizarMovimiento(int sockfdOrquestador, hilo_personaje_t *datos);
+int atenderOrquestador(hilo_personaje_t *datos);
+int enviarDatosPersonaje( hilo_personaje_t *datos);
+int realizarMovimiento( hilo_personaje_t *datos);
 int solicitarCoordenadasObjetivo(int sockfdOrquestador, char *objetivo);
-int recibirCoordenadas(int sockfdOrquestador, hilo_personaje_t *datos, header_t header);
+int recibirCoordenadas( hilo_personaje_t *datos, header_t header);
 int enviarNotificacionMovimiento(int sockfdOrquestador,
 		coordenada_t * coordenada, char id);
-int enviarSolicitudObjetivo(int sockfdOrquestador, hilo_personaje_t *datos);
-void recibirRecurso(int fd, hilo_personaje_t *datos);
-int esperarDesbloqueo(int planificadorSockfd, hilo_personaje_t *datos);
-int hiloRutinaMuerte(int planificadorSockfd, hilo_personaje_t *datos, char* causa);
-void rutinaReinicioNivel(int sockfdOrquestador, hilo_personaje_t *datos);
-void rutinaReinicioPlan(int sockfdOrquestador, hilo_personaje_t *datos);
+int enviarSolicitudObjetivo( hilo_personaje_t *datos);
+void recibirRecurso( hilo_personaje_t *datos);
+int esperarDesbloqueo( hilo_personaje_t *datos);
+int hiloRutinaMuerte( hilo_personaje_t *datos, char* causa);
+void rutinaReinicioNivel( hilo_personaje_t *datos);
+void rutinaReinicioPlan();
 void reiniciarDatosNivel(hilo_personaje_t *datos);
-void rutinaFinalizarNivel(int sockfdOrquestador, hilo_personaje_t *datos );
+void rutinaFinalizarNivel( hilo_personaje_t *datos );
 void dataHiloDestroy(hilo_personaje_t* datos);
 void signalRutinaVidas();
 void signalRutinaMuerte();
 int rutinaMuerte();
+int mostrarContinue();
 #endif /* PERSONAJE_H_ */

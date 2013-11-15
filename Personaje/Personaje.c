@@ -18,7 +18,7 @@ int main(void) {
 	mutexContadorVidas = malloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(mutexContadorVidas, NULL );
 	logFile = log_create(LOG_PATH, config->nombre, false, LOG_LEVEL_ERROR);
-	t_list *hilos = list_create();
+	hilos = list_create();
 	hilo_personaje_t *dataHilo;
 
 	do {
@@ -40,11 +40,15 @@ int main(void) {
 			dataHiloDestroy(dataHilo);
 		}
 
-//		TODO: Mostar continue: deberia ser los una vez por eso estaria aca
+		if (mostrarContinue() == 0) {
+			break;
+		}
 
 	} while (flagReinicioPlan == 1);
 
 	//TODO: enviar mensaje personaje finalizo correctamente... (si no continuo se debe tomar de forma positiva)
+	enviarSuccessPersonaje();
+
 
 	return EXIT_SUCCESS;
 }
@@ -92,9 +96,9 @@ void getConfiguracion(void) {
 
 void hiloPersonaje(hilo_personaje_t *datos) {
 //	fd_set bagMaster, bagEscucha;
-	int sockfdOrquestador = sockets_createClient(datos->ipOrquestador,
+	datos->sockfdPlanificador = sockets_createClient(datos->ipOrquestador,
 			datos->puertoOrquestador);
-	enviarHandshakePersonaje(sockfdOrquestador);
+	enviarHandshakePersonaje(datos->sockfdPlanificador);
 //	FD_ZERO(&bagMaster);
 //	FD_ZERO(&bagEscucha);
 //	FD_SET(sockfdOrquestador, &bagMaster);
@@ -115,75 +119,75 @@ void hiloPersonaje(hilo_personaje_t *datos) {
 //				if (sockfd == sockfdOrquestador) {
 //					nbytes = atenderOrquestador(sockfdOrquestador, datos);
 //
-//					if (nbytes == 0) //TODO: que hacer cuando la plataforma se desconecta?
+//					if (nbytes == 0)
 //						break;
 //				}
 //			}
 //		}
-		int nbytes = atenderOrquestador(sockfdOrquestador, datos);
+		int nbytes = atenderOrquestador(datos);
 		if (nbytes == 0) {
 //			TODO:que hacer cuando la plataforma se desconecta?
 		}
 		if (flagReinicioPlan) {
-			rutinaReinicioPlan(sockfdOrquestador, datos);
+//			rutinaReinicioPlan(datos);
 			break;
 		}
 	}
 }
 
-int atenderOrquestador(int sockfdOrquestador, hilo_personaje_t *datos) {
+int atenderOrquestador(hilo_personaje_t *datos) {
 	header_t header;
-	int nbytes = recv(sockfdOrquestador, &header, sizeof(header_t),
+	int nbytes = recv(datos->sockfdPlanificador, &header, sizeof(header_t),
 			MSG_WAITALL);
 
 	switch (header.type) {
 	case HANDSHAKE_ORQUESTADOR:
-		nbytes = enviarDatosPersonaje(sockfdOrquestador, datos);
+		nbytes = enviarDatosPersonaje(datos);
 		break;
 	case TURNO_CONCEDIDO:
-		nbytes = realizarMovimiento(sockfdOrquestador, datos);
+		nbytes = realizarMovimiento(datos);
 		break;
 	case UBICACION_CAJA:
-		nbytes = recibirCoordenadas(sockfdOrquestador, datos, header);
+		nbytes = recibirCoordenadas(datos, header);
 		break;
 	case OTORGAR_RECURSO:
-		recibirRecurso(sockfdOrquestador, datos);
+		recibirRecurso(datos);
 		break;
 	case NEGAR_RECURSO:
-		nbytes = esperarDesbloqueo(sockfdOrquestador, datos);
+		nbytes = esperarDesbloqueo(datos);
 		break;
 	case NOTIFICAR_MUERTE:
-		nbytes = hiloRutinaMuerte(sockfdOrquestador, datos, "por Enemigo");
+		nbytes = hiloRutinaMuerte(datos, "por Enemigo");
 		break;
 	}
 
 	return nbytes;
 }
 
-int realizarMovimiento(int sockfdOrquestador, hilo_personaje_t *datos) {
+int realizarMovimiento(hilo_personaje_t *datos) {
 	int nbytes = 0;
 
 	if (datos->coordObjetivo == NULL ) { //No hay coordenadas del objetivo
-		nbytes = solicitarCoordenadasObjetivo(sockfdOrquestador,
+		nbytes = solicitarCoordenadasObjetivo(datos->sockfdPlanificador,
 				datos->objetivos[datos->objetivoActual]);
 	} else if (obtenerDistancia(datos->coordPosicion, datos->coordObjetivo)) { //el personaje debe moverse en busca del objetivo
 		coordenadaMovimientoAlternado(datos->coordPosicion,
 				datos->coordObjetivo);
-		nbytes = enviarNotificacionMovimiento(sockfdOrquestador,
+		nbytes = enviarNotificacionMovimiento(datos->sockfdPlanificador,
 				datos->coordPosicion, datos->simbolo);
 	} else { //el personaje ya llego al objetivo
-		nbytes = enviarSolicitudObjetivo(sockfdOrquestador, datos);
+		nbytes = enviarSolicitudObjetivo(datos);
 	}
 
 	return nbytes;
 }
 
-int enviarSolicitudObjetivo(int sockfdOrquestador, hilo_personaje_t *datos) {
+int enviarSolicitudObjetivo(hilo_personaje_t *datos) {
 	header_t header;
 	header.type = SOLICITAR_RECURSO;
 	header.length = sizeof(char);
 
-	return sockets_send(sockfdOrquestador, &header,
+	return sockets_send(datos->sockfdPlanificador, &header,
 			datos->objetivos[datos->objetivoActual]);
 }
 
@@ -205,10 +209,9 @@ int enviarNotificacionMovimiento(int sockfdOrquestador,
 	return nbytes;
 }
 
-int recibirCoordenadas(int sockfdOrquestador, hilo_personaje_t *datos,
-		header_t header) {
+int recibirCoordenadas(hilo_personaje_t *datos, header_t header) {
 	char *serialized = malloc(header.length);
-	int nbytes = recv(sockfdOrquestador, serialized, header.length,
+	int nbytes = recv(datos->sockfdPlanificador, serialized, header.length,
 			MSG_WAITALL);
 	datos->coordObjetivo = coordenadas_deserializer(serialized);
 	free(serialized);
@@ -223,7 +226,7 @@ int solicitarCoordenadasObjetivo(int sockfdOrquestador, char *objetivo) {
 	return sockets_send(sockfdOrquestador, &header, objetivo);
 }
 
-int enviarDatosPersonaje(int sockfdOrquestador, hilo_personaje_t *datos) {
+int enviarDatosPersonaje(hilo_personaje_t *datos) {
 	header_t header;
 	header.type = NOTIFICAR_DATOS_PERSONAJE;
 	notificacion_datos_personaje_t *notificacion = malloc(
@@ -233,7 +236,7 @@ int enviarDatosPersonaje(int sockfdOrquestador, hilo_personaje_t *datos) {
 	notificacion->simbolo = datos->simbolo;
 	char *serialized = notificacionDatosPersonaje_serializer(notificacion,
 			&header.length);
-	int nbytes = sockets_send(sockfdOrquestador, &header, serialized);
+	int nbytes = sockets_send(datos->sockfdPlanificador, &header, serialized);
 	free(serialized);
 	notificacionDatosPersonaje_destroy(notificacion);
 
@@ -248,61 +251,77 @@ void enviarHandshakePersonaje(int sockfd) {
 	sockets_send(sockfd, &head, '\0');
 }
 
-void recibirRecurso(int sockfdOrquestador, hilo_personaje_t *datos) {
+void recibirRecurso(hilo_personaje_t *datos) {
 	coordenadas_destroy(datos->coordObjetivo);
 	datos->coordObjetivo = NULL;
 	datos->objetivoActual++;
 
 	if (datos->objetivos[datos->objetivoActual] == NULL ) {
-		rutinaFinalizarNivel(sockfdOrquestador, datos);
+		rutinaFinalizarNivel(datos);
 	}
 }
 
-int esperarDesbloqueo(int sockfdOrquestador, hilo_personaje_t *datos) {
+int esperarDesbloqueo(hilo_personaje_t *datos) {
 	header_t header;
 
-	int nbytes = recv(sockfdOrquestador, &header, sizeof(header), MSG_WAITALL);
+	int nbytes = recv(datos->sockfdPlanificador, &header, sizeof(header),
+			MSG_WAITALL);
 
 	switch (header.type) {
 	case NOTIFICAR_MUERTE:
-		nbytes = hiloRutinaMuerte(sockfdOrquestador, datos, "victima Deadlock");
+		nbytes = hiloRutinaMuerte(datos, "victima Deadlock");
 		break;
 	case OTORGAR_RECURSO:
-		recibirRecurso(sockfdOrquestador, datos);
+		recibirRecurso(datos);
 		break;
 	}
 
 	return nbytes;
 }
 
-int hiloRutinaMuerte(int sockfdOrquestador, hilo_personaje_t *datos,
-		char* causa) {
+int hiloRutinaMuerte(hilo_personaje_t *datos, char* causa) {
 
 	printf("Muerte por: %s \n", causa);
 
 	if (rutinaMuerte()) { //reiniciar el nivel actual
-		rutinaReinicioNivel(sockfdOrquestador, datos);
+
+		rutinaReinicioNivel(datos);
+
 	} else { //reiniciar plan de niveles
-		flagReinicioPlan = 1;
+
+		if (flagReinicioPlan == 0) {
+			rutinaReinicioPlan();
+		}
 	}
 
 	return 1;
 }
 
-void rutinaReinicioNivel(int sockfdOrquestador, hilo_personaje_t *datos) {
+void rutinaReinicioNivel(hilo_personaje_t *datos) {
 	//TODO: Esto Anda?
 
 	reiniciarDatosNivel(datos);
-	close(sockfdOrquestador);
-	sockfdOrquestador = sockets_createClient(datos->ipOrquestador,
+	close(datos->sockfdPlanificador);
+	datos->sockfdPlanificador = sockets_createClient(datos->ipOrquestador,
 			datos->puertoOrquestador);
-	enviarHandshakePersonaje(sockfdOrquestador);
+	enviarHandshakePersonaje(datos->sockfdPlanificador);
 
 }
 
-void rutinaReinicioPlan(int sockfdOrquestador, hilo_personaje_t *datos) {
-	//TODO: Hacer algo para que se desconecten todos los personajes
-	close(sockfdOrquestador);
+void rutinaReinicioPlan() {
+
+	flagReinicioPlan = 1;
+	int i;
+	for (i = 0; i < hilos->elements_count; i++) {
+		hilo_personaje_t* hilo = list_get(hilos, i);
+
+		header_t head;
+		head.type = NOTIFICAR_REINICIO_PLAN;
+		head.length = 0;
+		sockets_send(hilo->sockfdPlanificador, &head, '\0');
+
+	}
+
 }
 
 void reiniciarDatosNivel(hilo_personaje_t *datos) {
@@ -314,14 +333,14 @@ void reiniciarDatosNivel(hilo_personaje_t *datos) {
 
 }
 
-void rutinaFinalizarNivel(int sockfdOrquestador, hilo_personaje_t *datos) {
+void rutinaFinalizarNivel(hilo_personaje_t *datos) {
 	header_t header;
 	header.type = FINALIZAR_NIVEL;
 	header.length = 0;
 
-	sockets_send(sockfdOrquestador, &header, '\0');
+	sockets_send(datos->sockfdPlanificador, &header, '\0');
 
-	close(sockfdOrquestador);
+	close(datos->sockfdPlanificador);
 
 }
 
@@ -347,8 +366,8 @@ void signalRutinaMuerte() {
 
 	int hayVidas = rutinaMuerte();
 
-	if(! hayVidas){
-		flagReinicioPlan = 1;
+	if (!hayVidas) {
+		rutinaReinicioPlan();
 	}
 
 }
@@ -368,3 +387,33 @@ int rutinaMuerte() {
 
 }
 
+int mostrarContinue() {
+
+	char r = 'i';
+	while (1) {
+
+		printf("El personaje ha perdido todas sus vidas, desea continuar \n");
+		printf("S/N ");
+		scanf("%c", &r);
+
+		if (r == 'S') {
+			contItentos++;
+			return 1;
+		} else if (r == 'N') {
+			return 0;
+		}
+
+	}
+	return r == 'S';
+}
+
+enviarSuccessPersonaje(){
+	header_t header;
+	header.type = SOLICITAR_RECURSO;
+	header.length = sizeof(char);
+
+	int sockfdPlatafoma = sockets_createClient(config->ipOrquestador, config->puertoOrquestador);
+
+	return sockets_send(sockfdPlatafoma, &header,
+			config->simbolo);
+}
