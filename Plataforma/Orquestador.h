@@ -29,6 +29,14 @@ typedef struct {
 } configuracion_plataforma_t;
 
 typedef struct {
+	char simbolo;
+	int sockfd;
+	char objetivo;
+	coordenada_t *coordObjetivo;
+	coordenada_t *ubicacionActual;
+} datos_personaje_t;
+
+typedef struct {
 	pthread_t *hilo;
 	char *nombre;
 	int sockfdNivel;
@@ -36,18 +44,13 @@ typedef struct {
 	int algoritmo;
 	int quatum;
 	fd_set *bagMaster;
+	int sockfdMax;
 	t_queue *personajesListos;
 	t_queue *personajesBloqueados;
 	pthread_mutex_t *mutexColas;
+	datos_personaje_t *personajeEnMovimiento;
+	int quantumCorriente;
 } datos_planificador_t;
-
-typedef struct {
-	char simbolo;
-	int sockfd;
-	char objetivo;
-	coordenada_t *coordObjetivo;
-	coordenada_t *ubicacionActual;
-} datos_personaje_t;
 
 configuracion_plataforma_t *configuracion;
 t_log *logFile;
@@ -68,6 +71,6 @@ datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje);
 void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 		char *nombreNivel);
 void datosPersonaje_destroy(datos_personaje_t *self);
-int notificarNivel(int sockfdNivel,char simbolo);
+int notificarNivel(int sockfdNivel, char simbolo);
 
 #endif /* ORQUESTADOR_H_ */

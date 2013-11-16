@@ -89,8 +89,10 @@ void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 				dicPlanificadores, nombreNivel);
 		notificarNivel(datosPlanificador->sockfdNivel, datosPersonaje->simbolo);
 		//datosPlanificador->mutexColas TODO:Implementar mutex
-		queue_push(datosPlanificador->personajesListos, datosPersonaje);
 		FD_SET(datosPersonaje->sockfd, datosPlanificador->bagMaster);
+		if (datosPersonaje->sockfd > datosPlanificador->sockfdMax)
+			datosPlanificador->sockfdMax = datosPersonaje->sockfd;
+		queue_push(datosPlanificador->personajesListos, datosPersonaje);
 		//datosPlanificador->mutexColas TODO:Implementar mutex
 	}
 }
@@ -105,6 +107,10 @@ int notificarNivel(int sockfdNivel, char simbolo) {
 
 datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje) {
 	datos_personaje_t *datosPersonaje = malloc(sizeof(datos_personaje_t));
+	coordenada_t *ubicacion = malloc(sizeof(coordenada_t));
+	ubicacion->ejeX = 0;
+	ubicacion->ejeY = 0;
+	datosPersonaje->ubicacionActual = ubicacion;
 	datosPersonaje->simbolo = simbolo;
 	datosPersonaje->sockfd = sockfdPersonaje;
 	datosPersonaje->objetivo = '\0';
@@ -147,6 +153,8 @@ datos_planificador_t *crearDatosPlanificador(
 	datosPlanificador->personajesListos = queue_create();
 	datosPlanificador->mutexColas = malloc(sizeof(pthread_mutex_t));
 	datosPlanificador->bagMaster = malloc(sizeof(fd_set));
+	datosPlanificador->personajeEnMovimiento = NULL;
+	datosPlanificador->quantumCorriente = 0;
 	FD_ZERO(datosPlanificador->bagMaster);
 	pthread_mutex_init(datosPlanificador->mutexColas, NULL );
 
