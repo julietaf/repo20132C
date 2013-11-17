@@ -33,6 +33,7 @@ int main(void) {
 	FD_ZERO(&bagMaster);
 	FD_ZERO(&bagEscucha);
 	FD_SET(plataformaSockfd, &bagMaster);
+	FD_SET(notifyfd, &bagMaster);
 
 	if (notifyfd > sockfdMax) {
 		sockfdMax = notifyfd;
@@ -382,20 +383,27 @@ void tratarNuevoPersonaje(char* data) {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void tratarSolicitudUbicacionCaja(char* data) {
+
 	char rId = data[0];
+	char pId = data[1];
 	coordenada_t* coord;
 	header_t h;
 	int16_t length;
 	char* coordSerialized;
+	h.type = UBICACION_CAJA;
+	h.length = sizeof(char);
 
 	log_info(logFile, "Atendiendo pedido de posicion de caja %c", rId);
 	coord = obtenerCoordenadas(listaRecursos, rId);
 	coordSerialized = coordenadas_serializer(coord, &length);
 
-	h.type = UBICACION_CAJA;
-	h.length = length;
+	char* dataSend = malloc(h.length + length);
+	memcpy(dataSend, &pId, h.length);
+	memcpy(dataSend + h.length, coordSerialized, length);
+	h.length += length;
+	sockets_send(plataformaSockfd, &h, dataSend);
 
-	sockets_send(plataformaSockfd, &h, coordSerialized);
+
 
 	free(coordSerialized);
 	coordenadas_destroy(coord);
@@ -526,7 +534,7 @@ void dibujar() {
 	} else {
 		log_info(logFile, "Dibujado...");
 	}
-//        destroyItems(&tempI);
+
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------

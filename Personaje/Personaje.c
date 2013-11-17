@@ -96,8 +96,8 @@ void getConfiguracion(void) {
 
 void hiloPersonaje(hilo_personaje_t *datos) {
 //	fd_set bagMaster, bagEscucha;
-	datos->sockfdPlanificador = sockets_createClient(datos->ipOrquestador,
-			datos->puertoOrquestador);
+	crearClientePlanificador(datos);
+
 	enviarHandshakePersonaje(datos->sockfdPlanificador);
 //	FD_ZERO(&bagMaster);
 //	FD_ZERO(&bagEscucha);
@@ -317,7 +317,7 @@ void rutinaReinicioPlan() {
 
 		header_t head;
 		head.type = NOTIFICAR_REINICIO_PLAN;
-		head.length = 0;
+
 		sockets_send(hilo->sockfdPlanificador, &head, '\0');
 
 	}
@@ -407,13 +407,22 @@ int mostrarContinue() {
 	return r == 'S';
 }
 
-enviarSuccessPersonaje(){
+void enviarSuccessPersonaje(){
 	header_t header;
 	header.type = SOLICITAR_RECURSO;
 	header.length = sizeof(char);
 
 	int sockfdPlatafoma = sockets_createClient(config->ipOrquestador, config->puertoOrquestador);
 
-	return sockets_send(sockfdPlatafoma, &header,
-			config->simbolo);
+	sockets_send(sockfdPlatafoma, &header, &config->simbolo);
+}
+
+void crearClientePlanificador(hilo_personaje_t* datos){
+
+	do{
+		datos->sockfdPlanificador = sockets_createClient(datos->ipOrquestador, datos->puertoOrquestador);
+		if (!datos->sockfdPlanificador > 0){
+			sleep(1);
+		}
+	}while(datos->sockfdPlanificador > 0);
 }

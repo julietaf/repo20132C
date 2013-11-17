@@ -81,4 +81,6 @@ void signalRutinaVidas();
 void signalRutinaMuerte();
 int rutinaMuerte();
 int mostrarContinue();
+void enviarSuccessPersonaje();
+void crearClientePlanificador(hilo_personaje_t* datos);
 #endif /* PERSONAJE_H_ */
