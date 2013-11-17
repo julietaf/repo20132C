@@ -96,6 +96,7 @@ void notificarMuertePersonaje(char id, int causa);
 void notificacionDarRecurso(char id);
 void notificacionBloqueo(char id);
 void crearHiloEnemigo ();
+void crearHiloDeadLock();
 void dibujar();
 int personajeEnCaja(char pId, char rId);
 void mandarRecursosLiberados(t_list* recursosLiberados);
@@ -103,6 +104,7 @@ t_list* esperarRecursosAsignados();
 void actualizarEstado(t_list* asignados);
 int getNotifyFileDescriptor();
 void tratarModificacionAlgoritmo(int file_descriptor);
+void inicializarLog();
 //-----------------------Hilo DeadLock-------------------------------
 void deadLock();
 void gestionarDeadLock();

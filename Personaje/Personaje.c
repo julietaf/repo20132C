@@ -421,7 +421,7 @@ void crearClientePlanificador(hilo_personaje_t* datos){
 
 	do{
 		datos->sockfdPlanificador = sockets_createClient(datos->ipOrquestador, datos->puertoOrquestador);
-		if (!datos->sockfdPlanificador < 0){
+		if (datos->sockfdPlanificador < 0){
 			sleep(1);
 		}
 	}while(datos->sockfdPlanificador < 0);

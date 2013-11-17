@@ -20,14 +20,13 @@ int main(void) {
 	pthread_mutex_init(mutexDibujables, NULL );
 
 	configObj = inicializarCongiuracionNivel();
-	logFile = log_create(LOG_PATH, "ProcesoNivel", false,
-			log_level_from_string(configObj->logLevel));
-	separador_log(configObj->nombre);
+	inicializarLog();
 	inicializarInterfazGrafica();
 	inicializarConfiguracionCajas();
-	nivel_gui_dibujar(listaRecursos, configObj->nombre);
+	dibujar();
 	inicializarConexionPlataforma();
 	crearHiloEnemigo();
+//	crearHiloDeadLock();
 
 	notifyfd = getNotifyFileDescriptor();
 	FD_ZERO(&bagMaster);
@@ -53,12 +52,17 @@ int main(void) {
 					tratarModificacionAlgoritmo(notifyfd);
 				}
 
-				if (nbytes == 0){
-					//TODO:
-				}
+
 			}
 		}
+
+		if (nbytes == 0){
+			log_error(logFile, "Finalizacion por que se perdio la conexion con plataforma");
+			break;
+		}
 	}
+
+
 
 	return EXIT_SUCCESS;
 }
@@ -421,6 +425,8 @@ void tratarMovimiento(char* data) {
 
 	MoverPersonaje(listaPersonajes, pId, pCoordenada->ejeX, pCoordenada->ejeY);
 
+	dibujar();
+
 	free(pCoordenada);
 }
 
@@ -551,6 +557,13 @@ void crearHiloEnemigo() {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
+void crearHiloDeadLock(){
+	pthread_t hDeadLock;
+	pthread_create(&hDeadLock, NULL, (void*) deadLock, NULL);
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
 int personajeEnCaja(char pId, char rId) {
 
 	int enCaja = 0;
@@ -629,6 +642,7 @@ void actualizarEstado(t_list* asignados) {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 int getNotifyFileDescriptor() {
+
 	int file_descriptor = inotify_init();
 	if (file_descriptor < 0) {
 		log_error(logFile, "Al inicializar el inotify");
@@ -670,6 +684,14 @@ void tratarModificacionAlgoritmo(int file_descriptor) {
 		}
 		offset += sizeof(struct inotify_event) + event->len;
 	}
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void inicializarLog(){
+
+	logFile = log_create(LOG_PATH, "ProcesoNivel", false, log_level_from_string(configObj->logLevel));
+	separador_log(configObj->nombre);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -865,9 +887,13 @@ int validarPosicionEnemigo(coordenada_t* posicion) {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void deadLock() {
+
+	int wait = configObj->deadlockTime;
+	log_info(logFile, "DeadLock se ejecutara cada: %d segundos", wait);
+
 	while (1) {
-		int wait = configObj->deadlockTime;
 		sleep(wait);
+		log_info(logFile, "Ejecutando DeadLock");
 		gestionarDeadLock();
 
 	}
@@ -898,4 +924,5 @@ void gestionarDeadLock() {
 	notificarMuertePersonaje(menor->id, VICTIMA_DEADLOCK);
 
 }
+
 
