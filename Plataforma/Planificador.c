@@ -7,24 +7,35 @@
 
 #include "Planificador.h"
 
+int notificarReinicioPlan(int sockfd);
+int gestionarReinicioPlan(datos_planificador_t *datosPlan, int sockfdPersonaje);
+int enviarPersonajeFinalizo(datos_planificador_t *datosPlan, char simbolo);
+datos_personaje_t *removerPersonajePorSockfd(datos_planificador_t *datosPlan,
+		int sockfd);
+datos_personaje_t *buscarPersonajePorSimbolo(datos_planificador_t *datosPlan,
+		char simbolo);
+datos_personaje_t *buscarPersonajePorSockfd(datos_planificador_t *datosPlan,
+		int sockfdPersonaje);
+int solicitarUbicacionRecursos(t_queue *personajesListos);
+void actualizarEstadoAlgoritmo(datos_planificador_t *datosPlan);
 int atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 		datos_planificador_t *datos);
-void moverPersonaje(datos_planificador_t *datos);
+void moverPersonaje(datos_planificador_t *datosPlan);
 void seleccionarPorRoundRobin(datos_planificador_t *datosPlan);
 void seleccionarPorSRDF(datos_planificador_t *datos);
 int enviarTurnoConcedido(datos_personaje_t *personaje);
 int atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje);
 int atenderPedidoNivel(datos_planificador_t *datos);
 int gestionarUbicacionCaja(datos_planificador_t *datosPlan, header_t *header);
-void reenviarUbicacionCaja(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje, header_t *header, char *data);
+int reenviarUbicacionCaja(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje, char objetivo);
 int reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje, header_t *header, char *data);
 void gestionarNotificacionMovimiento(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje);
 void gestionarSolicitudRecurso(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje);
-datos_personaje_t *seleccionarCaminoMasCorto(t_queue *personajes);
+datos_personaje_t *seleccionarCaminoMasCorto(datos_planificador_t *datosPlan);
 int actualizarAlgoritmo(header_t *header, datos_planificador_t *datos);
 int removerPersonaje(header_t *header, datos_planificador_t *datos);
 int notificarMuerteDeadlock(char idPersonaje, datos_planificador_t *datos);
@@ -64,7 +75,7 @@ void planificador(datos_planificador_t *datos) {
 		else if (retval) //Hay un pedido de los procesos conectados
 			atenderPedidoPlanificador(&bagEscucha, datos->sockfdMax, datos);
 		else if (!queue_is_empty(
-				datos->personajesListos) || datos->personajeEnMovimiento!=NULL) //Se produjo el timeout
+				datos->personajesListos) || datos->personajeEnMovimiento != NULL) //Se produjo el timeout
 			moverPersonaje(datos);
 	}
 }
@@ -91,13 +102,13 @@ int atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 	return nbytes;
 }
 
-void moverPersonaje(datos_planificador_t *datos) {
-	switch (datos->algoritmo) {
+void moverPersonaje(datos_planificador_t *datosPlan) {
+	switch (datosPlan->algoritmo) {
 	case ROUND_ROBIN:
-		seleccionarPorRoundRobin(datos);
+		seleccionarPorRoundRobin(datosPlan);
 		break;
 	case SRDF:
-		seleccionarPorSRDF(datos);
+		seleccionarPorSRDF(datosPlan);
 		break;
 	}
 }
@@ -169,6 +180,20 @@ int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
 }
 
 void seleccionarPorSRDF(datos_planificador_t *datosPlan) {
+	int recursosSolicitados = 0;
+
+	if (datosPlan->personajeEnMovimiento == NULL )
+		recursosSolicitados = solicitarUbicacionRecursos(
+				datosPlan->personajesListos);
+
+	if (!recursosSolicitados) {
+		if (datosPlan->personajeEnMovimiento == NULL )
+			datosPlan->personajeEnMovimiento = seleccionarCaminoMasCorto(
+					datosPlan);
+
+		enviarTurnoConcedido(datosPlan->personajeEnMovimiento);
+	}
+}
 //	datos_personaje_t *personaje = seleccionarCaminoMasCorto(
 //			datosPlan->personajesListos);
 //	header_t header;
@@ -198,7 +223,6 @@ void seleccionarPorSRDF(datos_planificador_t *datosPlan) {
 //
 //		free(data);
 //	} while (header.type != SOLICITAR_RECURSO);
-}
 
 int enviarTurnoConcedido(datos_personaje_t *personaje) {
 	header_t header;
@@ -220,8 +244,9 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 	case UBICACION_CAJA:
 		data = malloc(header.length);
 		recv(sockfdPersonaje, data, header.length, MSG_WAITALL);
-		reenviarUbicacionCaja(datosPlan, datosPlan->personajeEnMovimiento,
-				&header, data);
+		datos_personaje_t *unPersonaje = buscarPersonajePorSockfd(datosPlan,
+				sockfdPersonaje);
+		reenviarUbicacionCaja(datosPlan, unPersonaje, data[0]);
 		free(data);
 		break;
 	case NOTIFICACION_MOVIMIENTO:
@@ -230,7 +255,10 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 		reenviarNotificacionMovimiento(datosPlan,
 				datosPlan->personajeEnMovimiento, &header, data);
 		free(data);
-		datosPlan->quantumCorriente--;
+
+		if (datosPlan->algoritmo == ROUND_ROBIN) {
+			datosPlan->quantumCorriente--;
+		}
 		break;
 	case SOLICITAR_RECURSO:
 		data = malloc(header.length);
@@ -238,11 +266,111 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 		reenviarSolicitudRecurso(datosPlan, datosPlan->personajeEnMovimiento,
 				data);
 		free(data);
-		datosPlan->quantumCorriente--;
+
+		if (datosPlan->algoritmo == ROUND_ROBIN) {
+			datosPlan->quantumCorriente = 0;
+		}
+		break;
+	case NOTIFICAR_REINICIO_PLAN:
+		notificarReinicioPlan(sockfdPersonaje);
 		break;
 	}
 
+	if (nbytes == 0) {
+		datos_personaje_t *unPersonaje = removerPersonajePorSockfd(datosPlan,
+				sockfdPersonaje);
+		enviarPersonajeFinalizo(datosPlan, unPersonaje->simbolo);
+		FD_CLR(sockfdPersonaje, datosPlan->bagMaster);
+		close(sockfdPersonaje);
+		log_info(logFile, "Personaje %c cerro la conexion inesperadamente.",
+				unPersonaje->simbolo);
+		datosPersonaje_destroy(unPersonaje);
+	}
+
 	return nbytes;
+}
+
+int gestionarReinicioPlan(datos_planificador_t *datosPlan, int sockfdPersonaje) {
+	datos_personaje_t *unPersonaje = removerPersonajePorSockfd(datosPlan,
+			sockfdPersonaje);
+	int nbytes = notificarReinicioPlan(sockfdPersonaje);
+	enviarPersonajeFinalizo(datosPlan, unPersonaje->simbolo);
+	close(unPersonaje->sockfd);
+	datosPersonaje_destroy(unPersonaje);
+
+	return nbytes;
+}
+
+int notificarReinicioPlan(int sockfd) {
+	header_t header;
+	header.type = NOTIFICAR_REINICIO_PLAN;
+	header.length = 0;
+
+	return sockets_send(sockfd, &header, '\0');
+}
+
+int enviarPersonajeFinalizo(datos_planificador_t *datosPlan, char simbolo) {
+	header_t header;
+	header.type = PERSONAJE_FINALIZO;
+	header.length = sizeof(char);
+
+	return sockets_send(datosPlan->sockfdNivel, &header, &simbolo);
+}
+
+datos_personaje_t *removerPersonajePorSockfd(datos_planificador_t *datosPlan,
+		int sockfd) {
+	int _is_personaje(datos_personaje_t *unPersonaje) {
+		return unPersonaje->sockfd == sockfd;
+	}
+
+	datos_personaje_t *unPersonaje = NULL;
+
+	if (datosPlan->personajeEnMovimiento != NULL ) {
+		if (datosPlan->personajeEnMovimiento->sockfd == sockfd) {
+			unPersonaje = datosPlan->personajeEnMovimiento;
+			datosPlan->personajeEnMovimiento = NULL;
+			datosPlan->quantumCorriente = 0;
+		}
+	}
+
+	if (unPersonaje == NULL ) {
+		unPersonaje = list_remove_by_condition(
+				datosPlan->personajesListos->elements, (void *) _is_personaje);
+	}
+
+	if (unPersonaje == NULL ) {
+		unPersonaje = list_remove_by_condition(
+				datosPlan->personajesBloqueados->elements,
+				(void *) _is_personaje);
+	}
+
+	return unPersonaje;
+}
+datos_personaje_t *buscarPersonajePorSockfd(datos_planificador_t *datosPlan,
+		int sockfdPersonaje) {
+	int _is_personaje(datos_personaje_t *unPersonaje) {
+		return unPersonaje->sockfd == sockfdPersonaje;
+	}
+
+	datos_personaje_t *unPersonaje = NULL;
+
+	if (datosPlan->personajeEnMovimiento != NULL ) {
+		if (datosPlan->personajeEnMovimiento->sockfd == sockfdPersonaje) {
+			unPersonaje = datosPlan->personajeEnMovimiento;
+		}
+	}
+
+	if (unPersonaje == NULL ) {
+		unPersonaje = list_find(datosPlan->personajesListos->elements,
+				(void *) _is_personaje);
+	}
+
+	if (unPersonaje == NULL ) {
+		unPersonaje = list_find(datosPlan->personajesBloqueados->elements,
+				(void *) _is_personaje);
+	}
+
+	return unPersonaje;
 }
 
 int atenderPedidoNivel(datos_planificador_t *datosPlan) {
@@ -271,6 +399,12 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 		coordenadas_destroy(datosPlan->personajeEnMovimiento->coordObjetivo);
 		datosPlan->personajeEnMovimiento->coordObjetivo = NULL;
 		informarSolicitudRecurso(datosPlan->personajeEnMovimiento, header.type);
+
+		if (datosPlan->algoritmo == SRDF) {
+			queue_push(datosPlan->personajesListos,
+					datosPlan->personajeEnMovimiento);
+			datosPlan->personajeEnMovimiento = NULL;
+		}
 		break;
 	case NEGAR_RECURSO:
 		//TODO: implementar mutex
@@ -278,6 +412,12 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 				datosPlan->personajeEnMovimiento);
 		datosPlan->personajeEnMovimiento = NULL;
 		informarSolicitudRecurso(datosPlan->personajeEnMovimiento, header.type);
+
+		if (datosPlan->algoritmo == SRDF) {
+			queue_push(datosPlan->personajesBloqueados,
+					datosPlan->personajeEnMovimiento);
+			datosPlan->personajeEnMovimiento = NULL;
+		}
 		break;
 		//TODO: implementar mensajes: NOTIFICACION_RECURSOS_LIBERADOS
 	}
@@ -423,26 +563,81 @@ int actualizarAlgoritmo(header_t *header, datos_planificador_t *datos) {
 	datos->quatum = info->quantum;
 	informacionPlanificacion_destroy(info);
 
+	if (datos->personajeEnMovimiento != NULL ) {
+		queue_push(datos->personajesListos, datos->personajeEnMovimiento);
+		datos->personajeEnMovimiento = NULL;
+	}
+
+	switch (datos->algoritmo) {
+	case ROUND_ROBIN:
+		log_info(logFile, "Cambio de algoritmo a Round Robin.");
+		break;
+	case SRDF:
+		log_info(logFile,
+				"Cambio de algoritmo a Shortest Resource Distance First.");
+		break;
+	}
+
 	return nbytes;
 }
 
-void reenviarUbicacionCaja(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje, header_t *header, char *data) {
-	memcpy(&personaje->objetivo, data, sizeof(char));
-	sockets_send(datosPlan->sockfdNivel, header, data);
+int reenviarUbicacionCaja(datos_planificador_t *datosPlan,
+		datos_personaje_t *personaje, char recurso) {
+	header_t header;
+	char *data = malloc(2 * sizeof(char));
+	int nbytes = 0;
+	header.type = UBICACION_CAJA;
+	header.length = 2 * sizeof(char);
+	personaje->objetivo = recurso;
+	memcpy(data, &recurso, sizeof(char));
+	memcpy(data + sizeof(char), &personaje->simbolo, sizeof(char));
+	nbytes = sockets_send(datosPlan->sockfdNivel, &header, data);
+	free(data);
+
+	return nbytes;
 }
 
 int gestionarUbicacionCaja(datos_planificador_t *datosPlan, header_t *header) {
-	datos_personaje_t *personaje = datosPlan->personajeEnMovimiento;
 	char *respuesta = malloc(header->length);
 	int nbytes = recv(datosPlan->sockfdNivel, respuesta, header->length,
 			MSG_WAITALL);
-	personaje->coordObjetivo = coordenadas_deserializer(respuesta);
-	nbytes = sockets_send(personaje->sockfd, header, respuesta);
+	datos_personaje_t *personaje = buscarPersonajePorSimbolo(datosPlan,
+			respuesta[0]);
+
+	personaje->coordObjetivo = coordenadas_deserializer(
+			respuesta + sizeof(char));
+	nbytes = sockets_send(personaje->sockfd, header, respuesta + sizeof(char));
 
 	free(respuesta);
 
 	return nbytes;
+}
+
+datos_personaje_t *buscarPersonajePorSimbolo(datos_planificador_t *datosPlan,
+		char simbolo) {
+	int _is_personaje(datos_personaje_t *unPersonaje) {
+		return unPersonaje->simbolo == simbolo;
+	}
+
+	datos_personaje_t *unPersonaje = NULL;
+
+	if (datosPlan->personajeEnMovimiento != NULL ) {
+		if (datosPlan->personajeEnMovimiento->simbolo == simbolo) {
+			unPersonaje = datosPlan->personajeEnMovimiento;
+		}
+	}
+
+	if (unPersonaje == NULL ) {
+		unPersonaje = list_find(datosPlan->personajesListos->elements,
+				(void *) _is_personaje);
+	}
+
+	if (unPersonaje == NULL ) {
+		unPersonaje = list_find(datosPlan->personajesBloqueados->elements,
+				(void *) _is_personaje);
+	}
+
+	return unPersonaje;
 }
 
 int reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
@@ -491,12 +686,12 @@ int informarSolicitudRecurso(datos_personaje_t *personaje, int type) {
 	return sockets_send(personaje->sockfd, &header, '\0');
 }
 
-datos_personaje_t *seleccionarCaminoMasCorto(t_queue *colaPersonajes) {
-	t_list *listaPersonajes = colaPersonajes->elements;
+datos_personaje_t *seleccionarCaminoMasCorto(datos_planificador_t *datosPlan) {
+	t_list *listaPersonajes = datosPlan->personajesListos->elements;
 	int i, flag = 0, index = 0;
 	datos_personaje_t *personaje, *personajeElegido;
 
-	for (i = 0; list_size(listaPersonajes) < i; i++) {
+	for (i = 0; i < list_size(listaPersonajes); i++) {
 		personaje = list_get(listaPersonajes, i);
 
 		if (personaje->coordObjetivo != NULL ) {
@@ -519,4 +714,20 @@ datos_personaje_t *seleccionarCaminoMasCorto(t_queue *colaPersonajes) {
 	list_remove(listaPersonajes, index);
 
 	return personajeElegido;
+}
+
+int solicitarUbicacionRecursos(t_queue *personajesListos) {
+	int i, recursosSolicitados = 0;
+	datos_personaje_t *unPersonaje;
+
+	for (i = 0; i < queue_size(personajesListos); i++) {
+		unPersonaje = list_get(personajesListos->elements, i);
+
+		if (unPersonaje->coordObjetivo == NULL ) {
+			enviarTurnoConcedido(unPersonaje);
+			recursosSolicitados = 1;
+		}
+	}
+
+	return recursosSolicitados;
 }

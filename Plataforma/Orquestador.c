@@ -16,6 +16,7 @@ void orquestador(void) {
 			configuracion->puerto, configuracion->backlog);
 	int sockfdMax = escuchasfd;
 	dicPlanificadores = dictionary_create();
+	listaEspera = list_create();
 	int sockfd, nbytes;
 	fd_set bagMaster, bagTemp;
 	FD_ZERO(&bagMaster);
@@ -94,7 +95,21 @@ void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 			datosPlanificador->sockfdMax = datosPersonaje->sockfd;
 		queue_push(datosPlanificador->personajesListos, datosPersonaje);
 		//datosPlanificador->mutexColas TODO:Implementar mutex
+		log_info(logFile, "Personaje %c delegado a %s", datosPersonaje->simbolo,
+				datosPlanificador->nombre);
+	} else {
+		agregarPersonajeAEspera(nombreNivel, datosPersonaje);
+		log_info(logFile, "Nivel pedido por %c no conectado todavia.",
+				datosPersonaje->simbolo);
 	}
+}
+
+void agregarPersonajeAEspera(char *nombreNivel, datos_personaje_t *personaje) {
+	personaje_espera_t *perEspera = malloc(sizeof(personaje_espera_t));
+	perEspera->nombreNivel = malloc(strlen(nombreNivel) + 1);
+	strcpy(perEspera->nombreNivel, nombreNivel);
+	perEspera->personaje = personaje;
+	list_add(listaEspera, perEspera);
 }
 
 int notificarNivel(int sockfdNivel, char simbolo) {
@@ -114,13 +129,14 @@ datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje) {
 	datosPersonaje->simbolo = simbolo;
 	datosPersonaje->sockfd = sockfdPersonaje;
 	datosPersonaje->objetivo = '\0';
+	datosPersonaje->coordObjetivo = NULL;
 
 	return datosPersonaje;
 }
 
 void crearNuevoHiloPlanificador(int sockfd) {
 	header_t header;
-	recv(sockfd, &header, sizeof(header_t), MSG_WAITALL);
+	recv(sockfd, &header, sizeof(header), MSG_WAITALL);
 
 	if (header.type == NOTIFICAR_ALGORITMO_PLANIFICACION) {
 		char *dataNivel = malloc(header.length);
@@ -135,6 +151,31 @@ void crearNuevoHiloPlanificador(int sockfd) {
 				(void *) datosPlanificador);
 		dictionary_put(dicPlanificadores, datosPlanificador->nombre,
 				datosPlanificador);
+		log_info(logFile, "Nivel %s conectado.", datosPlanificador->nombre);
+		informarPersonajesEspera(datosPlanificador);
+	}
+}
+
+void informarPersonajesEspera(datos_planificador_t *datosPlanificador) {
+	int _is_personaje(personaje_espera_t *per) {
+		return strcmp(per->nombreNivel, datosPlanificador->nombre) == 0;
+	}
+
+	personaje_espera_t *perEspera;
+
+	while ((perEspera = list_remove_by_condition(listaEspera,
+			(void *) _is_personaje)) != NULL ) {
+		notificarNivel(datosPlanificador->sockfdNivel,
+				perEspera->personaje->simbolo);
+		//datosPlanificador->mutexColas TODO:Implementar mutex
+		FD_SET(perEspera->personaje->sockfd, datosPlanificador->bagMaster);
+		if (perEspera->personaje->sockfd > datosPlanificador->sockfdMax)
+			datosPlanificador->sockfdMax = perEspera->personaje->sockfd;
+		queue_push(datosPlanificador->personajesListos, perEspera->personaje);
+		//datosPlanificador->mutexColas TODO:Implementar mutex
+		log_info(logFile, "Personaje %c salio de espera.",
+				perEspera->personaje->simbolo);
+		personajeEspera_destroy(perEspera);
 	}
 }
 
@@ -179,6 +220,11 @@ void agregarSockfd(fd_set *bagMaster, int *sockfdMax, int sockfd) {
 void removerSockfd(fd_set *bagMaster, int sockfd) {
 	close(sockfd);
 	FD_CLR(sockfd, bagMaster);
+}
+
+void personajeEspera_destroy(personaje_espera_t *self) {
+	free(self->nombreNivel);
+	free(self);
 }
 
 configuracion_plataforma_t *getConfiguracion(void) {

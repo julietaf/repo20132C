@@ -52,11 +52,20 @@ typedef struct {
 	int quantumCorriente;
 } datos_planificador_t;
 
+typedef struct {
+	char *nombreNivel;
+	datos_personaje_t *personaje;
+} personaje_espera_t;
+
 configuracion_plataforma_t *configuracion;
 t_log *logFile;
 t_dictionary *dicPlanificadores;
+t_list *listaEspera;
 
 void orquestador(void);
+void agregarPersonajeAEspera(char *nombreNivel, datos_personaje_t *personaje);
+void informarPersonajesEspera(datos_planificador_t *datosPlanificador);
+void personajeEspera_destroy(personaje_espera_t *self);
 void agregarSockfd(fd_set *bagMaster, int *sockfdMax, int sockfd);
 void removerSockfd(fd_set *bagMaster, int sockfd);
 void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax);
