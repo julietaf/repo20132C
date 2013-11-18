@@ -122,7 +122,9 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 	}
 
 	enviarTurnoConcedido(datosPlan->personajeEnMovimiento);
+	atenderPedidoPersonaje(datosPlan, datosPlan->personajeEnMovimiento->sockfd);
 }
+
 //while (quantumPersonaje) {
 //	enviarTurnoConcedido(personaje);
 //	header_t header;
@@ -175,6 +177,8 @@ void seleccionarPorSRDF(datos_planificador_t *datosPlan) {
 		}
 
 		enviarTurnoConcedido(datosPlan->personajeEnMovimiento);
+		atenderPedidoPersonaje(datosPlan,
+				datosPlan->personajeEnMovimiento->sockfd);
 	}
 }
 //	datos_personaje_t *personaje = seleccionarCaminoMasCorto(
@@ -228,15 +232,7 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 		reenviarUbicacionCaja(datosPlan, sockfdPersonaje, &header);
 		break;
 	case NOTIFICACION_MOVIMIENTO:
-		data = malloc(header.length);
-		recv(sockfdPersonaje, data, header.length, MSG_WAITALL);
-		reenviarNotificacionMovimiento(datosPlan,
-				datosPlan->personajeEnMovimiento, &header, data);
-		free(data);
-
-		if (datosPlan->algoritmo == ROUND_ROBIN) {
-			datosPlan->quantumCorriente--;
-		}
+		reenviarNotificacionMovimiento(datosPlan, sockfdPersonaje, &header);
 		break;
 	case SOLICITAR_RECURSO:
 		reenviarSolicitudRecurso(datosPlan, sockfdPersonaje, &header);
@@ -255,6 +251,27 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 		log_error(logFile, "Personaje %c cerro la conexion inesperadamente.",
 				unPersonaje->simbolo);
 		datosPersonaje_destroy(unPersonaje);
+	}
+
+	return nbytes;
+}
+
+int reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
+		int sockfdPersonaje, header_t *header) {
+	char *data = malloc(header.length);
+	recv(sockfdPersonaje, data, header.length, MSG_WAITALL);
+	datosPlan->personajeEnMovimiento->ubicacionActual =
+			coordenadas_deserializer(data + sizeof(char));
+	log_info(logFile, "Personaje %c se movio a X: %d Y: %d.",
+			datosPlan->personajeEnMovimiento->simbolo,
+			datosPlan->personajeEnMovimiento->ubicacionActual->ejeX,
+			datosPlan->personajeEnMovimiento->ubicacionActual->ejeY);
+
+	int nbytes = sockets_send(datosPlan->sockfdNivel, header, data);
+	free(data);
+
+	if (datosPlan->algoritmo == ROUND_ROBIN) {
+		datosPlan->quantumCorriente--;
 	}
 
 	return nbytes;
@@ -691,16 +708,6 @@ datos_personaje_t *buscarPersonajePorSimbolo(datos_planificador_t *datosPlan,
 	}
 
 	return unPersonaje;
-}
-
-int reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje, header_t *header, char *data) {
-	personaje->ubicacionActual = coordenadas_deserializer(data + sizeof(char));
-	log_info(logFile, "Personaje %c se movio a X: %d Y: %d.",
-			personaje->simbolo, personaje->ubicacionActual->ejeX,
-			personaje->ubicacionActual->ejeY);
-
-	return sockets_send(datosPlan->sockfdNivel, header, data);
 }
 
 int informarSolicitudRecurso(datos_personaje_t *personaje, int type) {
