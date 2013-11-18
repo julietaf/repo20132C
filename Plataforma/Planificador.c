@@ -21,7 +21,6 @@ datos_personaje_t *buscarPersonajePorSimbolo(datos_planificador_t *datosPlan,
 datos_personaje_t *buscarPersonajePorSockfd(datos_planificador_t *datosPlan,
 		int sockfdPersonaje);
 int solicitarUbicacionRecursos(t_queue *personajesListos);
-void actualizarEstadoAlgoritmo(datos_planificador_t *datosPlan);
 int atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 		datos_planificador_t *datos);
 void moverPersonaje(datos_planificador_t *datosPlan);
@@ -33,7 +32,7 @@ int atenderPedidoNivel(datos_planificador_t *datos);
 int reenviarUbicacionCaja(datos_planificador_t *datosPlan, int sockfdPersonaje,
 		header_t *header);
 int reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje, header_t *header, char *data);
+		int sockfdPersonaje, header_t *header);
 datos_personaje_t *seleccionarCaminoMasCorto(datos_planificador_t *datosPlan);
 int actualizarAlgoritmo(header_t *header, datos_planificador_t *datos);
 int removerPersonaje(header_t *header, datos_planificador_t *datos);
@@ -222,7 +221,6 @@ int enviarTurnoConcedido(datos_personaje_t *personaje) {
 int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje) {
 	header_t header;
 	int nbytes = recv(sockfdPersonaje, &header, sizeof(header), MSG_WAITALL);
-	char *data;
 
 	switch (header.type) {
 	case FINALIZAR_NIVEL:
@@ -258,8 +256,8 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 
 int reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
 		int sockfdPersonaje, header_t *header) {
-	char *data = malloc(header.length);
-	recv(sockfdPersonaje, data, header.length, MSG_WAITALL);
+	char *data = malloc(header->length);
+	recv(sockfdPersonaje, data, header->length, MSG_WAITALL);
 	datosPlan->personajeEnMovimiento->ubicacionActual =
 			coordenadas_deserializer(data + sizeof(char));
 	log_info(logFile, "Personaje %c se movio a X: %d Y: %d.",
