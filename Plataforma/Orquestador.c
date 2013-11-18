@@ -93,10 +93,10 @@ void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 		FD_SET(datosPersonaje->sockfd, datosPlanificador->bagMaster);
 		if (datosPersonaje->sockfd > datosPlanificador->sockfdMax)
 			datosPlanificador->sockfdMax = datosPersonaje->sockfd;
-		queue_push(datosPlanificador->personajesListos, datosPersonaje);
-		//datosPlanificador->mutexColas TODO:Implementar mutex
 		log_info(logFile, "Personaje %c delegado a %s", datosPersonaje->simbolo,
 				datosPlanificador->nombre);
+		queue_push(datosPlanificador->personajesListos, datosPersonaje);
+		//datosPlanificador->mutexColas TODO:Implementar mutex
 	} else {
 		agregarPersonajeAEspera(nombreNivel, datosPersonaje);
 		log_info(logFile, "Nivel pedido por %c no conectado todavia.",
@@ -147,11 +147,11 @@ void crearNuevoHiloPlanificador(int sockfd) {
 		datos_planificador_t *datosPlanificador = crearDatosPlanificador(
 				infoPlanificacion, sockfd);
 		informacionPlanificacion_destroy(infoPlanificacion);
+//		log_info(logFile, "Nivel %s conectado.", datosPlanificador->nombre);
 		pthread_create(datosPlanificador->hilo, NULL, (void *) planificador,
 				(void *) datosPlanificador);
 		dictionary_put(dicPlanificadores, datosPlanificador->nombre,
 				datosPlanificador);
-		log_info(logFile, "Nivel %s conectado.", datosPlanificador->nombre);
 		informarPersonajesEspera(datosPlanificador);
 	}
 }
@@ -173,8 +173,8 @@ void informarPersonajesEspera(datos_planificador_t *datosPlanificador) {
 			datosPlanificador->sockfdMax = perEspera->personaje->sockfd;
 		queue_push(datosPlanificador->personajesListos, perEspera->personaje);
 		//datosPlanificador->mutexColas TODO:Implementar mutex
-		log_info(logFile, "Personaje %c salio de espera.",
-				perEspera->personaje->simbolo);
+//		log_info(logFile, "Personaje %c salio de espera.",
+//				perEspera->personaje->simbolo);
 		personajeEspera_destroy(perEspera);
 	}
 }

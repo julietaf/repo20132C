@@ -7,6 +7,10 @@
 
 #include "Planificador.h"
 
+int esperarSolicitudRecurso(datos_planificador_t *datosPlan);
+int gestionarUbicacionCaja(datos_planificador_t *datosPlan, header_t *header);
+int esperarUbicacionCaja(datos_planificador_t *datosPlan,
+		datos_personaje_t *unPersonaje);
 int notificarReinicioPlan(int sockfd);
 int gestionarReinicioPlan(datos_planificador_t *datosPlan, int sockfdPersonaje);
 int enviarPersonajeFinalizo(datos_planificador_t *datosPlan, char simbolo);
@@ -26,15 +30,10 @@ void seleccionarPorSRDF(datos_planificador_t *datos);
 int enviarTurnoConcedido(datos_personaje_t *personaje);
 int atenderPedidoPersonaje(datos_planificador_t *datos, int sockfdPersonaje);
 int atenderPedidoNivel(datos_planificador_t *datos);
-int gestionarUbicacionCaja(datos_planificador_t *datosPlan, header_t *header);
-int reenviarUbicacionCaja(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje, char objetivo);
+int reenviarUbicacionCaja(datos_planificador_t *datosPlan, int sockfdPersonaje,
+		header_t *header);
 int reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje, header_t *header, char *data);
-void gestionarNotificacionMovimiento(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje);
-void gestionarSolicitudRecurso(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje);
 datos_personaje_t *seleccionarCaminoMasCorto(datos_planificador_t *datosPlan);
 int actualizarAlgoritmo(header_t *header, datos_planificador_t *datos);
 int removerPersonaje(header_t *header, datos_planificador_t *datos);
@@ -48,7 +47,7 @@ void desbloquearPersonaje(datos_personaje_t *perDesbloqueado,
 		datos_planificador_t *datos);
 int informarRecursosUsados(t_list *recursosUsados, datos_planificador_t *datos);
 int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje, char *data);
+		int sockfdPersonaje, header_t *header);
 int informarSolicitudRecurso(datos_personaje_t *personaje, int type);
 
 void planificador(datos_planificador_t *datos) {
@@ -64,7 +63,7 @@ void planificador(datos_planificador_t *datos) {
 
 	while (1) {
 		bagEscucha = *datos->bagMaster;
-		timeout.tv_sec = 1;
+		timeout.tv_sec = 3;
 		timeout.tv_usec = datos->retardo;
 
 		retval = select(datos->sockfdMax + 1, &bagEscucha, NULL, NULL,
@@ -92,11 +91,6 @@ int atenderPedidoPlanificador(fd_set *bagEscucha, int sockfdMax,
 				nbytes = atenderPedidoPersonaje(datos, sockfd);
 			}
 		}
-	}
-
-	if (sockfd == 0) {
-		close(sockfd);
-		FD_CLR(sockfd, datos->bagMaster);
 	}
 
 	return nbytes;
@@ -163,22 +157,6 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 //	sleep(1); //TODO: implementar el retardo
 //}
 
-int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje, char *data) {
-	header_t header;
-	header.type = SOLICITAR_RECURSO;
-	personaje_recurso_t *personajeRecurso = malloc(sizeof(personaje_recurso_t));
-	personajeRecurso->idPersonaje = personaje->simbolo;
-	personajeRecurso->idRecurso = data[0];
-	char *serialized = personajeRecurso_serializer(personajeRecurso,
-			&header.length);
-	int nbytes = sockets_send(datosPlan->sockfdNivel, &header, serialized);
-	free(serialized);
-	free(personajeRecurso);
-
-	return nbytes;
-}
-
 void seleccionarPorSRDF(datos_planificador_t *datosPlan) {
 	int recursosSolicitados = 0;
 
@@ -186,10 +164,15 @@ void seleccionarPorSRDF(datos_planificador_t *datosPlan) {
 		recursosSolicitados = solicitarUbicacionRecursos(
 				datosPlan->personajesListos);
 
-	if (!recursosSolicitados) {
-		if (datosPlan->personajeEnMovimiento == NULL )
+	if (recursosSolicitados) {
+		log_info(logFile, "Informacion de objetivos de personajes incompleta.");
+	} else {
+		if (datosPlan->personajeEnMovimiento == NULL ) {
 			datosPlan->personajeEnMovimiento = seleccionarCaminoMasCorto(
 					datosPlan);
+			log_info(logFile, "Personaje %c seleccionado por SRDF.",
+					datosPlan->personajeEnMovimiento->simbolo);
+		}
 
 		enviarTurnoConcedido(datosPlan->personajeEnMovimiento);
 	}
@@ -242,12 +225,7 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 		//TODO:Realizar tareas de finalización.
 		break;
 	case UBICACION_CAJA:
-		data = malloc(header.length);
-		recv(sockfdPersonaje, data, header.length, MSG_WAITALL);
-		datos_personaje_t *unPersonaje = buscarPersonajePorSockfd(datosPlan,
-				sockfdPersonaje);
-		reenviarUbicacionCaja(datosPlan, unPersonaje, data[0]);
-		free(data);
+		reenviarUbicacionCaja(datosPlan, sockfdPersonaje, &header);
 		break;
 	case NOTIFICACION_MOVIMIENTO:
 		data = malloc(header.length);
@@ -261,15 +239,7 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 		}
 		break;
 	case SOLICITAR_RECURSO:
-		data = malloc(header.length);
-		recv(sockfdPersonaje, data, header.length, MSG_WAITALL);
-		reenviarSolicitudRecurso(datosPlan, datosPlan->personajeEnMovimiento,
-				data);
-		free(data);
-
-		if (datosPlan->algoritmo == ROUND_ROBIN) {
-			datosPlan->quantumCorriente = 0;
-		}
+		reenviarSolicitudRecurso(datosPlan, sockfdPersonaje, &header);
 		break;
 	case NOTIFICAR_REINICIO_PLAN:
 		notificarReinicioPlan(sockfdPersonaje);
@@ -282,10 +252,101 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 		enviarPersonajeFinalizo(datosPlan, unPersonaje->simbolo);
 		FD_CLR(sockfdPersonaje, datosPlan->bagMaster);
 		close(sockfdPersonaje);
-		log_info(logFile, "Personaje %c cerro la conexion inesperadamente.",
+		log_error(logFile, "Personaje %c cerro la conexion inesperadamente.",
 				unPersonaje->simbolo);
 		datosPersonaje_destroy(unPersonaje);
 	}
+
+	return nbytes;
+}
+
+int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
+		int sockfdPersonaje, header_t *header) {
+	char *data = malloc(header->length);
+	recv(sockfdPersonaje, data, header->length, MSG_WAITALL);
+
+	personaje_recurso_t *personajeRecurso = malloc(sizeof(personaje_recurso_t));
+	personajeRecurso->idPersonaje = datosPlan->personajeEnMovimiento->simbolo;
+	personajeRecurso->idRecurso = data[0];
+	char *serialized = personajeRecurso_serializer(personajeRecurso,
+			&header->length);
+	sockets_send(datosPlan->sockfdNivel, header, serialized);
+	free(serialized);
+	free(personajeRecurso);
+	free(data);
+
+	return esperarSolicitudRecurso(datosPlan);
+}
+
+int esperarSolicitudRecurso(datos_planificador_t *datosPlan) {
+	header_t header;
+	recv(datosPlan->sockfdNivel, &header, sizeof(header_t), MSG_WAITALL);
+
+	switch (header.type) {
+	case NEGAR_RECURSO:
+		queue_push(datosPlan->personajesBloqueados,
+				datosPlan->personajeEnMovimiento);
+		log_info(logFile, "Personaje %c entro en cola bloqueados.",
+				datosPlan->personajeEnMovimiento->simbolo);
+		break;
+	case OTORGAR_RECURSO:
+		coordenadas_destroy(datosPlan->personajeEnMovimiento->coordObjetivo);
+		datosPlan->personajeEnMovimiento->objetivo = '\0';
+		queue_push(datosPlan->personajesListos,
+				datosPlan->personajeEnMovimiento);
+		log_info(logFile, "Personaje %c entro en cola listos.",
+				datosPlan->personajeEnMovimiento->simbolo);
+		break;
+	case NOTIFICAR_ALGORITMO_PLANIFICACION:
+		//TODO:implementar llamada en caso de desincronizacion.
+		break;
+	}
+
+	int nbytes = informarSolicitudRecurso(datosPlan->personajeEnMovimiento,
+			header.type);
+	datosPlan->personajeEnMovimiento = NULL;
+	datosPlan->quantumCorriente = 0;
+
+	return nbytes;
+}
+
+int reenviarUbicacionCaja(datos_planificador_t *datosPlan, int sockfdPersonaje,
+		header_t *header) {
+	char *data = malloc(header->length);
+	recv(sockfdPersonaje, data, header->length, MSG_WAITALL);
+	datos_personaje_t *unPersonaje = buscarPersonajePorSockfd(datosPlan,
+			sockfdPersonaje);
+	unPersonaje->objetivo = data[0];
+	sockets_send(datosPlan->sockfdNivel, header, data);
+	log_info(logFile, "Personaje %c con nuevo objetivo: %c",
+			unPersonaje->simbolo, unPersonaje->objetivo);
+	free(data);
+
+	return esperarUbicacionCaja(datosPlan, unPersonaje);
+}
+
+int esperarUbicacionCaja(datos_planificador_t *datosPlan,
+		datos_personaje_t *unPersonaje) {
+	header_t header;
+	recv(datosPlan->sockfdNivel, &header, sizeof(header_t), MSG_WAITALL);
+	char *respuesta = malloc(header.length);
+	int nbytes = recv(datosPlan->sockfdNivel, respuesta, header.length,
+			MSG_WAITALL);
+
+	switch (header.type) {
+	case UBICACION_CAJA:
+		unPersonaje->coordObjetivo = coordenadas_deserializer(
+				respuesta + sizeof(char));
+		header.length = header.length - sizeof(char);
+		nbytes = sockets_send(unPersonaje->sockfd, &header,
+				respuesta + sizeof(char));
+		break;
+	case NOTIFICAR_ALGORITMO_PLANIFICACION:
+		//TODO:implementar llamada en caso de desincronizacion.
+		break;
+	}
+
+	free(respuesta);
 
 	return nbytes;
 }
@@ -346,6 +407,7 @@ datos_personaje_t *removerPersonajePorSockfd(datos_planificador_t *datosPlan,
 
 	return unPersonaje;
 }
+
 datos_personaje_t *buscarPersonajePorSockfd(datos_planificador_t *datosPlan,
 		int sockfdPersonaje) {
 	int _is_personaje(datos_personaje_t *unPersonaje) {
@@ -384,13 +446,13 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 		//TODO:Realizar tareas de finalización.
 		break;
 	case NOTIFICAR_ALGORITMO_PLANIFICACION:
-		nbytes = actualizarAlgoritmo(&header, datosPlan);
+		actualizarAlgoritmo(&header, datosPlan);
 		break;
 	case VICTIMA_DEADLOCK:
-		nbytes = removerPersonaje(&header, datosPlan);
+		removerPersonaje(&header, datosPlan);
 		break;
 	case VICTIMA_ENEMIGO:
-		nbytes = removerPersonaje(&header, datosPlan);
+		removerPersonaje(&header, datosPlan);
 		break;
 	case UBICACION_CAJA:
 		gestionarUbicacionCaja(datosPlan, &header);
@@ -421,6 +483,29 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 		break;
 		//TODO: implementar mensajes: NOTIFICACION_RECURSOS_LIBERADOS
 	}
+
+	if (nbytes == 0) {
+		close(datosPlan->sockfdNivel);
+		FD_CLR(datosPlan->sockfdNivel, datosPlan->bagMaster);
+		log_error(logFile, "Nivel %s se desconecto inesperadamente.",
+				datosPlan->nombre);
+	}
+
+	return nbytes;
+}
+
+int gestionarUbicacionCaja(datos_planificador_t *datosPlan, header_t *header) {
+	char *respuesta = malloc(header->length);
+	int nbytes = recv(datosPlan->sockfdNivel, respuesta, header->length,
+			MSG_WAITALL);
+	datos_personaje_t *unPersonaje = buscarPersonajePorSimbolo(datosPlan,
+			respuesta[0]);
+	unPersonaje->coordObjetivo = coordenadas_deserializer(
+			respuesta + sizeof(char));
+	header->length = header->length - sizeof(char);
+	nbytes = sockets_send(unPersonaje->sockfd, header,
+			respuesta + sizeof(char));
+	free(respuesta);
 
 	return nbytes;
 }
@@ -581,38 +666,6 @@ int actualizarAlgoritmo(header_t *header, datos_planificador_t *datos) {
 	return nbytes;
 }
 
-int reenviarUbicacionCaja(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje, char recurso) {
-	header_t header;
-	char *data = malloc(2 * sizeof(char));
-	int nbytes = 0;
-	header.type = UBICACION_CAJA;
-	header.length = 2 * sizeof(char);
-	personaje->objetivo = recurso;
-	memcpy(data, &recurso, sizeof(char));
-	memcpy(data + sizeof(char), &personaje->simbolo, sizeof(char));
-	nbytes = sockets_send(datosPlan->sockfdNivel, &header, data);
-	free(data);
-
-	return nbytes;
-}
-
-int gestionarUbicacionCaja(datos_planificador_t *datosPlan, header_t *header) {
-	char *respuesta = malloc(header->length);
-	int nbytes = recv(datosPlan->sockfdNivel, respuesta, header->length,
-			MSG_WAITALL);
-	datos_personaje_t *personaje = buscarPersonajePorSimbolo(datosPlan,
-			respuesta[0]);
-
-	personaje->coordObjetivo = coordenadas_deserializer(
-			respuesta + sizeof(char));
-	nbytes = sockets_send(personaje->sockfd, header, respuesta + sizeof(char));
-
-	free(respuesta);
-
-	return nbytes;
-}
-
 datos_personaje_t *buscarPersonajePorSimbolo(datos_planificador_t *datosPlan,
 		char simbolo) {
 	int _is_personaje(datos_personaje_t *unPersonaje) {
@@ -643,40 +696,11 @@ datos_personaje_t *buscarPersonajePorSimbolo(datos_planificador_t *datosPlan,
 int reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje, header_t *header, char *data) {
 	personaje->ubicacionActual = coordenadas_deserializer(data + sizeof(char));
+	log_info(logFile, "Personaje %c se movio a X: %d Y: %d.",
+			personaje->simbolo, personaje->ubicacionActual->ejeX,
+			personaje->ubicacionActual->ejeY);
 
 	return sockets_send(datosPlan->sockfdNivel, header, data);
-}
-
-void gestionarNotificacionMovimiento(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje) {
-	header_t header;
-
-	recv(datosPlan->sockfdNivel, &header, sizeof(header), MSG_WAITALL);
-
-	if (header.type == NOTIFICACION_MOVIMIENTO) {
-		//TODO:Confirmación de movimiento realizado.
-	}
-}
-
-void gestionarSolicitudRecurso(datos_planificador_t *datosPlan,
-		datos_personaje_t *personaje) {
-	header_t header;
-
-	recv(datosPlan->sockfdNivel, &header, sizeof(header), MSG_WAITALL);
-
-	switch (header.type) {
-	case OTORGAR_RECURSO:
-		coordenadas_destroy(personaje->coordObjetivo);
-		personaje->coordObjetivo = NULL;
-		break;
-	case NEGAR_RECURSO:
-//		pthread_mutex_lock(datosPlan->mutexColas);
-		queue_push(datosPlan->personajesBloqueados, personaje);
-//		pthread_mutex_unlock(datosPlan->mutexColas);
-		break;
-	}
-
-	informarSolicitudRecurso(personaje, header.type);
 }
 
 int informarSolicitudRecurso(datos_personaje_t *personaje, int type) {
