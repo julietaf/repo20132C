@@ -7,6 +7,8 @@
 
 #include "Planificador.h"
 
+int informarPersonajeFinalizado(datos_planificador_t *datosPlan,
+		int sockfdPersonaje);
 int esperarSolicitudRecurso(datos_planificador_t *datosPlan);
 int gestionarUbicacionCaja(datos_planificador_t *datosPlan, header_t *header);
 int esperarUbicacionCaja(datos_planificador_t *datosPlan,
@@ -224,7 +226,7 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 
 	switch (header.type) {
 	case FINALIZAR_NIVEL:
-		//TODO:Realizar tareas de finalización.
+		informarPersonajeFinalizado(datosPlan, sockfdPersonaje);
 		break;
 	case UBICACION_CAJA:
 		reenviarUbicacionCaja(datosPlan, sockfdPersonaje, &header);
@@ -250,6 +252,16 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 				unPersonaje->simbolo);
 		datosPersonaje_destroy(unPersonaje);
 	}
+
+	return nbytes;
+}
+
+int informarPersonajeFinalizado(datos_planificador_t *datosPlan,
+		int sockfdPersonaje) {
+	datos_personaje_t *personaje = removerPersonajePorSockfd(datosPlan,
+			sockfdPersonaje);
+	int nbytes = enviarPersonajeFinalizo(datosPlan, sockfdPersonaje);
+	datosPersonaje_destroy(personaje);
 
 	return nbytes;
 }
@@ -457,9 +469,6 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 			MSG_WAITALL);
 
 	switch (header.type) {
-	case PERSONAJE_FINALIZO:
-		//TODO:Realizar tareas de finalización.
-		break;
 	case NOTIFICAR_ALGORITMO_PLANIFICACION:
 		actualizarAlgoritmo(&header, datosPlan);
 		break;
