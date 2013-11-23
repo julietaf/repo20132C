@@ -26,7 +26,7 @@ int main(void) {
 	dibujar();
 	inicializarConexionPlataforma();
 	crearHiloEnemigo();
-//	crearHiloDeadLock();
+	crearHiloDeadLock();
 
 	notifyfd = getNotifyFileDescriptor();
 	FD_ZERO(&bagMaster);
@@ -63,7 +63,7 @@ int main(void) {
 	}
 
 
-
+	int nivel_gui_terminar();
 	return EXIT_SUCCESS;
 }
 
@@ -114,6 +114,10 @@ NIVEL_CONF* inicializarCongiuracionNivel() {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void inicializarInterfazGrafica() {
+
+	if (desactivarGUI){
+		return;
+	}
 
 	if (nivel_gui_inicializar() == -1) {
 		log_error(logFile, "No se pudo inicializar la interfaz grafica");
@@ -178,19 +182,6 @@ void separador_log(char* head) {
 			head);
 }
 
-//-----------------------------------------------------------------------------------------------------------------------------
-
-//void inicializarSockEscucha() {
-//	sockEscucha = sockets_createServer(configObj->localhostaddr,
-//			configObj->localhostport, 1);
-//	if (sockEscucha == -1) {
-//		log_error(logFile, "No se pudo crear el socket escucha");
-//	} else {
-//		log_info(logFile, "Nivel escucnando en ip: %s, puerto: %s, fd:%d",
-//				configObj->localhostaddr, configObj->localhostport,
-//				sockEscucha);
-//	}
-//}
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -450,6 +441,7 @@ void tratarSolicitudRecurso(char* data) {
 		log_info(logFile, "Se le asigno el recurso: %c, al personaje: %c",
 				personaje->idRecurso, personaje->idPersonaje);
 		notificacionDarRecurso(personaje->idPersonaje);
+		dibujar();
 	} else {
 		log_info(logFile, "Se bloqueo el personaje: %c, al pedir el recruso %c",
 				personaje->idPersonaje, personaje->idRecurso);
@@ -511,7 +503,7 @@ void notificacionDarRecurso(char id) {
 	header_t header;
 	header.type = OTORGAR_RECURSO;
 	header.length = 0;
-	sockets_send(plataformaSockfd, &header, "");
+	sockets_send(plataformaSockfd, &header, '\0');
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -520,12 +512,19 @@ void notificacionBloqueo(char id) {
 	header_t header;
 	header.type = NEGAR_RECURSO;
 	header.length = 0;
-	sockets_send(plataformaSockfd, &header, "");
+	sockets_send(plataformaSockfd, &header, '\0');
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void dibujar() {
+
+	if (desactivarGUI){
+		return;
+	}
+	log_info(logFile, "Dibujando...");
+	pthread_mutex_lock(mutexDibujables);
+
 	t_list* tempI;
 
 	tempI = list_create();
@@ -535,11 +534,13 @@ void dibujar() {
 	list_add_all(tempI, listaEnemigos);
 
 	if (nivel_gui_dibujar(tempI, configObj->nombre) == -1) {
-		log_info(logFile, "No se puedo dibujar el personaje");
+		log_info(logFile, "No se puedo dibujar");
 		//      EXIT_FAILURE;
 	} else {
 		log_info(logFile, "Dibujado...");
 	}
+
+	pthread_mutex_unlock(mutexDibujables);
 
 }
 
@@ -706,11 +707,10 @@ void enemigo(int idEnemigo) {
 		cazarPersonajes(bufferMovimiento, posicion);
 		moverEnemigo(listaEnemigos, idEnemigo, posicion->ejeX, posicion->ejeY);
 
-		pthread_mutex_lock(mutexDibujables);
 
 		dibujar();
 
-		pthread_mutex_unlock(mutexDibujables);
+
 
 		log_info(logFile, "Enemigo: %d,se movio a posicion (%d, %d) ",
 				idEnemigo, posicion->ejeX, posicion->ejeY);
@@ -904,15 +904,14 @@ void deadLock() {
 
 void gestionarDeadLock() {
 	int i;
-
 	t_list* bloqueados = obtenerPersonajesEnDL(listaRecursos, listaPersonajes);
 	ITEM_NIVEL * temp = NULL;
 	ITEM_NIVEL * menor = NULL;
 
-	if (list_is_empty(bloqueados)) {
+	if (list_is_empty(bloqueados) || bloqueados->elements_count==1) {
+		list_destroy_and_destroy_elements(bloqueados, (void *)free);
 		return;
 	}
-
 	menor = list_get(bloqueados, 0);
 	for (i = 0; i < list_size(bloqueados); i++) {
 		temp = list_get(bloqueados, i);
@@ -922,7 +921,7 @@ void gestionarDeadLock() {
 	}
 
 	notificarMuertePersonaje(menor->id, VICTIMA_DEADLOCK);
-
+	list_destroy_and_destroy_elements(bloqueados, (void *)free);
 }
 
 

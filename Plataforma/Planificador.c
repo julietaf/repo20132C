@@ -62,7 +62,7 @@ void planificador(datos_planificador_t *datos) {
 
 	while (1) {
 		bagEscucha = *datos->bagMaster;
-		timeout.tv_sec = 3;
+		timeout.tv_sec = 1;
 		timeout.tv_usec = datos->retardo;
 
 		retval = select(datos->sockfdMax + 1, &bagEscucha, NULL, NULL,

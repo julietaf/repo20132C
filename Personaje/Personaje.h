@@ -83,4 +83,5 @@ int rutinaMuerte();
 int mostrarContinue();
 void enviarSuccessPersonaje();
 void crearClientePlanificador(hilo_personaje_t* datos);
+void inicializarLog();
 #endif /* PERSONAJE_H_ */
