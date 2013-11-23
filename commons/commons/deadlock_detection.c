@@ -89,6 +89,7 @@ t_list* cargarAvaible(t_list* listaR, t_list* mat) {
 //	}
 	ITEM_NIVEL* temp = NULL;
 	t_list* avl = list_create();
+
 	int i;
 
 	for (i = 0; i < list_size(listaR); i++) {
@@ -219,7 +220,7 @@ int esCero(t_list* vec1) {
 
 void inicializarFinish(t_list* listaP, t_list* mat, t_list* finish) {
 	ITEM_NIVEL* temp;
-	t_list* request;
+	t_list* request = list_create();
 	int i;
 
 	for (i = 0; i < list_size(listaP); i++) {
@@ -301,63 +302,64 @@ void setFinishProceso(t_list* finish, char id_p, int value) {
 }
 
 t_list* deadlockDetection(t_list* listaR, t_list* listaP) {
-	t_list* finish = NULL;
-	t_list* request = NULL;
-	t_list* avaible = NULL;
-	t_list* work = NULL;
-	t_list* allocation = NULL;
-	t_list* matriz = NULL;
-	ITEM_NIVEL* tempP = NULL;
-	int i;
+        t_list* finish = list_create();
+        t_list* request = NULL;
+        t_list* avaible = NULL;
+        t_list* work = NULL;
+        t_list* allocation = NULL;
+        t_list* matriz = NULL;
+        ITEM_NIVEL* tempP = NULL;
+        int i;
 
-	finish = list_create();
-	matriz = cargarMatriz(listaR, listaP);
-	inicializarFinish(listaP, matriz, finish);
-	avaible = cargarAvaible(listaR, matriz);
+        if (list_is_empty(listaR) || list_is_empty(listaP)){
+        	return finish;
+        }
 
-	work = avaible;
+        matriz = cargarMatriz(listaR, listaP);
+        inicializarFinish(listaP, matriz, finish);
+        avaible = cargarAvaible(listaR, matriz);
 
-	for(i = 0; i < list_size(listaP); i++) {
-		tempP = list_get(listaP, i);
-		request = obtenerRequest(matriz, tempP->id);
-		allocation = obtenerAllocation(matriz, tempP->id);
-		int boolF = obtenerFinishProceso(finish, tempP->id);
-		int boolM = esMenorIgual(request, work);
-		if (!boolF && boolM) {
-			work = sumarVectores(work, allocation);
-			setFinishProceso(finish, tempP->id, 1);
-		}
-//		tempP = tempP->next;
-	}
+        work = avaible;
 
-//	list_destroy_and_destroy_elements(request, (void *) free);
-	list_destroy(request);
-	list_destroy_and_destroy_elements(avaible, (void *) free);
-//	TODO: list_destroy_and_destroy_elements(work, (void *) free);
-//	list_destroy_and_destroy_elements(allocation, (void *) free);
-	list_destroy(allocation);
-	list_destroy_and_destroy_elements(matriz, (void *) free);
-	return finish;
+        for(i = 0; i < list_size(listaP); i++) {
+                tempP = list_get(listaP, i);
+                request = obtenerRequest(matriz, tempP->id);
+                allocation = obtenerAllocation(matriz, tempP->id);
+                int boolF = obtenerFinishProceso(finish, tempP->id);
+                int boolM = esMenorIgual(request, work);
+                if (!boolF && boolM) {
+                        work = sumarVectores(work, allocation);
+                        setFinishProceso(finish, tempP->id, 1);
+                }
+//                tempP = tempP->next;
+        }
+
+//        TODO: Liberar esto sin que rompa
+          list_destroy_and_destroy_elements(request, (void *) free);
+//        --list_destroy_and_destroy_elements(avaible, (void *) free);
+          list_destroy_and_destroy_elements(work, (void *) free);
+//        --list_destroy_and_destroy_elements(allocation, (void *) free);
+        list_destroy_and_destroy_elements(matriz, (void *) free);
+        return finish;
 }
 
 t_list* obtenerPersonajesEnDL(t_list* listaR, t_list* listaP) {
 
-	t_list* finalizados = NULL;
-	t_list* bloqueados = list_create();
-	t_dl_vector* personaje;
-	int i;
-	finalizados = deadlockDetection(listaR, listaP);
+        t_list* finalizados = NULL;
+        t_list* bloqueados = list_create();
+        t_dl_vector* personaje;
+        int i;
+        finalizados = deadlockDetection(listaR, listaP);
 
-	for (i = 0; i < finalizados->elements_count; i++) {
-		personaje = list_get(finalizados, i);
+        for (i = 0; i < finalizados->elements_count; i++) {
+                personaje = list_get(finalizados, i);
 
-		if (!(personaje->value)) {
-			list_add(bloqueados,
-					CrearNodoVector(personaje->id, personaje->value));
-		}
-	}
+                if (!(personaje->value)) {
+                        list_add(bloqueados,
+                                        CrearNodoVector(personaje->id, personaje->value));
+                }
+        }
 
-	list_destroy_and_destroy_elements(finalizados, (void *) free);
-	return bloqueados;
+        list_destroy_and_destroy_elements(finalizados, (void *) free);
+        return bloqueados;
 }
-
