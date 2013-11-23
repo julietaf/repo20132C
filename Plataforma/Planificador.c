@@ -261,6 +261,8 @@ int informarPersonajeFinalizado(datos_planificador_t *datosPlan,
 	datos_personaje_t *personaje = removerPersonajePorSockfd(datosPlan,
 			sockfdPersonaje);
 	int nbytes = enviarPersonajeFinalizo(datosPlan, sockfdPersonaje);
+	log_info(logFile, "Personaje %c finalizo el nivel %s", personaje->simbolo,
+			datosPlan->nombre);
 	datosPersonaje_destroy(personaje);
 
 	return nbytes;
@@ -505,7 +507,9 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 			datosPlan->personajeEnMovimiento = NULL;
 		}
 		break;
-		//TODO: implementar mensajes: NOTIFICACION_RECURSOS_LIBERADOS
+	case NOTIFICACION_RECURSOS_LIBERADOS:
+		removerPersonaje(&header, datosPlan);
+		break;
 	}
 
 	if (nbytes == 0) {
