@@ -15,7 +15,7 @@ void orquestador(void) {
 	int escuchasfd = sockets_createServer(configuracion->direccionIp,
 			configuracion->puerto, configuracion->backlog);
 	int sockfdMax = escuchasfd;
-	dicPlanificadores = dictionary_create();
+	listaPlanificadores = list_create();
 	listaEspera = list_create();
 	int sockfd, nbytes;
 	fd_set bagMaster, bagTemp;
@@ -57,7 +57,7 @@ void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax) {
 	switch (header.type) {
 	case HANDSHAKE_PERSONAJE:
 		enviarHandshakeOrquestador(nuevoSockfd);
-		delegarAlPlanificador(nuevoSockfd);
+		atenderNuevoPersonaje(nuevoSockfd);
 		break;
 	case HANDSHAKE_NIVEL:
 		enviarHandshakeOrquestador(nuevoSockfd);
@@ -66,28 +66,83 @@ void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax) {
 	}
 }
 
-void delegarAlPlanificador(int sockfd) {
+void delegarAlPlanificador(header_t *header, int sockfd) {
+	char *datos = malloc(header->length);
+	recv(sockfd, datos, header->length, MSG_WAITALL);
+	notificacion_datos_personaje_t *notificacion =
+			notificacionDatosPersonaje_deserializer(datos);
+	datos_personaje_t *datosPersonaje = crearDatosPersonaje(
+			notificacion->simbolo, sockfd);
+	agregarPersonajeAListos(datosPersonaje, notificacion->nombreNivel);
+	free(datos);
+	notificacionDatosPersonaje_destroy(notificacion);
+}
+
+void atenderNuevoPersonaje(int sockfd) {
 	header_t header;
 	recv(sockfd, &header, sizeof(header), MSG_WAITALL);
 
-	if (header.type == NOTIFICAR_DATOS_PERSONAJE) {
-		char *datos = malloc(header.length);
-		recv(sockfd, datos, header.length, MSG_WAITALL);
-		notificacion_datos_personaje_t *notificacion =
-				notificacionDatosPersonaje_deserializer(datos);
-		datos_personaje_t *datosPersonaje = crearDatosPersonaje(
-				notificacion->simbolo, sockfd);
-		agregarPersonajeAListos(datosPersonaje, notificacion->nombreNivel);
-		free(datos);
-		notificacionDatosPersonaje_destroy(notificacion);
+	switch (header.type) {
+	case NOTIFICAR_DATOS_PERSONAJE:
+		delegarAlPlanificador(&header, sockfd);
+		break;
+	case FINALIZAR_NIVEL: //TODO: chequear este mensaje con proceso Nivel.
+		chequearUltimoPersonaje();
+		break;
 	}
+}
+
+void chequearUltimoPersonaje(void) {
+	int i, hayPersonajesActivos = 1;
+	char c;
+	datos_planificador_t *unPlanificador;
+
+	for (i = 0; i < list_size(listaPlanificadores); i++) {
+		unPlanificador = list_get(listaPlanificadores, i);
+		hayPersonajesActivos = tienePersonajesActivos(unPlanificador);
+
+		if (hayPersonajesActivos)
+			break;
+	}
+
+	if (!hayPersonajesActivos) {
+		printf("Desea enfrentar a Koopa? y/n");
+
+		if ((c = getchar()) == 'y') {
+			printf("Aqui se llamaria a koopa.");
+//			char *sols[] = { "koopa", configObj->solicitudesKoopa, (char *) 0 };
+//			execv(configObj->binarioKoopa, sols);
+		}
+	}
+}
+
+int tienePersonajesActivos(datos_planificador_t *unPlanificador) {
+	int personajesActivos = 1;
+//TODO: aplicar mutexes.
+	pthread_mutex_lock(unPlanificador->mutexColas);
+	if (queue_is_empty(
+			unPlanificador->personajesListos) && queue_is_empty(unPlanificador->personajesBloqueados)
+			&& unPlanificador->personajeEnMovimiento==NULL) {
+		personajesActivos = 0;
+	}
+	pthread_mutex_unlock(unPlanificador->mutexColas);
+
+	return personajesActivos;
+}
+
+datos_planificador_t *buscarPlanificador(char *nombre) {
+	int _is_planificador(datos_planificador_t *plan) {
+		return strcmp(plan->nombre, nombre) == 0;
+	}
+
+	return list_find(listaPlanificadores, (void *) _is_planificador);
 }
 
 void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 		char *nombreNivel) {
-	if (dictionary_has_key(dicPlanificadores, nombreNivel)) {
-		datos_planificador_t *datosPlanificador = dictionary_get(
-				dicPlanificadores, nombreNivel);
+	datos_planificador_t *datosPlanificador = buscarPlanificador(nombreNivel);
+
+	if (datosPlanificador != NULL ) {
 		notificarNivel(datosPlanificador->sockfdNivel, datosPersonaje->simbolo);
 		//datosPlanificador->mutexColas TODO:Implementar mutex
 		FD_SET(datosPersonaje->sockfd, datosPlanificador->bagMaster);
@@ -95,7 +150,9 @@ void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 			datosPlanificador->sockfdMax = datosPersonaje->sockfd;
 		log_info(logFile, "Personaje %c delegado a %s", datosPersonaje->simbolo,
 				datosPlanificador->nombre);
+		pthread_mutex_lock(datosPlanificador->mutexColas);
 		queue_push(datosPlanificador->personajesListos, datosPersonaje);
+		pthread_mutex_unlock(datosPlanificador->mutexColas);
 		//datosPlanificador->mutexColas TODO:Implementar mutex
 	} else {
 		agregarPersonajeAEspera(nombreNivel, datosPersonaje);
@@ -150,8 +207,7 @@ void crearNuevoHiloPlanificador(int sockfd) {
 //		log_info(logFile, "Nivel %s conectado.", datosPlanificador->nombre);
 		pthread_create(datosPlanificador->hilo, NULL, (void *) planificador,
 				(void *) datosPlanificador);
-		dictionary_put(dicPlanificadores, datosPlanificador->nombre,
-				datosPlanificador);
+		list_add(listaPlanificadores, datosPlanificador);
 		informarPersonajesEspera(datosPlanificador);
 	}
 }
@@ -171,7 +227,9 @@ void informarPersonajesEspera(datos_planificador_t *datosPlanificador) {
 		FD_SET(perEspera->personaje->sockfd, datosPlanificador->bagMaster);
 		if (perEspera->personaje->sockfd > datosPlanificador->sockfdMax)
 			datosPlanificador->sockfdMax = perEspera->personaje->sockfd;
+		pthread_mutex_lock(datosPlanificador->mutexColas);
 		queue_push(datosPlanificador->personajesListos, perEspera->personaje);
+		pthread_mutex_unlock(datosPlanificador->mutexColas);
 		//datosPlanificador->mutexColas TODO:Implementar mutex
 //		log_info(logFile, "Personaje %c salio de espera.",
 //				perEspera->personaje->simbolo);

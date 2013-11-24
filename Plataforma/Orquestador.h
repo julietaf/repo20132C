@@ -59,8 +59,8 @@ typedef struct {
 
 configuracion_plataforma_t *configuracion;
 t_log *logFile;
-t_dictionary *dicPlanificadores;
-t_list *listaEspera;
+//t_dictionary *dicPlanificadores;
+t_list *listaPlanificadores, *listaEspera;
 
 void orquestador(void);
 void agregarPersonajeAEspera(char *nombreNivel, datos_personaje_t *personaje);
@@ -75,11 +75,15 @@ int enviarHandshakeOrquestador(int sockfd);
 void crearNuevoHiloPlanificador(int sockfd);
 datos_planificador_t *crearDatosPlanificador(
 		informacion_planificacion_t *infoPlan, int sockfdNivel);
-void delegarAlPlanificador(int sockfd);
+void delegarAlPlanificador(header_t *header, int sockfd);
 datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje);
 void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 		char *nombreNivel);
 void datosPersonaje_destroy(datos_personaje_t *self);
 int notificarNivel(int sockfdNivel, char simbolo);
+void chequearUltimoPersonaje(void);
+int tienePersonajesActivos(datos_planificador_t *unPlanificador);
+void atenderNuevoPersonaje(int sockfd);
+datos_planificador_t *buscarPlanificador(char *nombre);
 
 #endif /* ORQUESTADOR_H_ */
