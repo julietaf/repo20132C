@@ -12,6 +12,7 @@
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 #include <commons/config.h>
 #include <commons/sockets.h>
@@ -34,7 +35,6 @@ typedef struct {
 	pthread_t *hilo;
 	char *nivel;
 	char **objetivos;
-//	int vidas;
 	char *ipOrquestador;
 	char *puertoOrquestador;
 	char simbolo;
@@ -45,14 +45,26 @@ typedef struct {
 	int sockfdPlanificador;
 } hilo_personaje_t;
 
+typedef struct {
+	char id;
+	int motivo;
+} estado_t;
+
 typedef void (*funcPtr)();
+
+enum enum_finalizacion {
+	FIN_REINICIO_PLAN,
+	FIN_NIVEL
+};
 
 t_config *configFile;
 configuracion_personaje_t *config;
 t_log *logFile;
 int flagReinicioPlan = 0, contItentos = 0;
 t_list * hilos;
+estado_t* estado;
 pthread_mutex_t *mutexContadorVidas;
+sem_t sHiloTermino;
 
 void getConfiguracion(void);
 void hiloPersonaje(hilo_personaje_t *datos);
@@ -84,4 +96,6 @@ int mostrarContinue();
 void enviarSuccessPersonaje();
 void crearClientePlanificador(hilo_personaje_t* datos);
 void inicializarLog();
+void matarHilos();
+int gestionarFinNivel(char id);
 #endif /* PERSONAJE_H_ */

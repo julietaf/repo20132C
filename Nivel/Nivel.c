@@ -51,8 +51,6 @@ int main(void) {
 				}else if (sockfd == notifyfd){
 					tratarModificacionAlgoritmo(notifyfd);
 				}
-
-
 			}
 		}
 
