@@ -119,13 +119,13 @@ void chequearUltimoPersonaje(void) {
 int tienePersonajesActivos(datos_planificador_t *unPlanificador) {
 	int personajesActivos = 1;
 //TODO: aplicar mutexes.
-//	pthread_mutex_lock(unPlanificador->mutexColasCompartidas);
+	pthread_mutex_lock(unPlanificador->mutexColas);
 	if (queue_is_empty(
 			unPlanificador->personajesListos) && queue_is_empty(unPlanificador->personajesBloqueados)
 			&& unPlanificador->personajeEnMovimiento==NULL) {
 		personajesActivos = 0;
 	}
-//	pthread_mutex_unlock(unPlanificador->mutexColasCompartidas);
+	pthread_mutex_unlock(unPlanificador->mutexColas);
 
 	return personajesActivos;
 }
@@ -150,7 +150,9 @@ void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 			datosPlanificador->sockfdMax = datosPersonaje->sockfd;
 		log_info(logFile, "Personaje %c delegado a %s", datosPersonaje->simbolo,
 				datosPlanificador->nombre);
+		pthread_mutex_lock(datosPlanificador->mutexColas);
 		queue_push(datosPlanificador->personajesListos, datosPersonaje);
+		pthread_mutex_unlock(datosPlanificador->mutexColas);
 		//datosPlanificador->mutexColas TODO:Implementar mutex
 	} else {
 		agregarPersonajeAEspera(nombreNivel, datosPersonaje);
@@ -225,7 +227,9 @@ void informarPersonajesEspera(datos_planificador_t *datosPlanificador) {
 		FD_SET(perEspera->personaje->sockfd, datosPlanificador->bagMaster);
 		if (perEspera->personaje->sockfd > datosPlanificador->sockfdMax)
 			datosPlanificador->sockfdMax = perEspera->personaje->sockfd;
+		pthread_mutex_lock(datosPlanificador->mutexColas);
 		queue_push(datosPlanificador->personajesListos, perEspera->personaje);
+		pthread_mutex_unlock(datosPlanificador->mutexColas);
 		//datosPlanificador->mutexColas TODO:Implementar mutex
 //		log_info(logFile, "Personaje %c salio de espera.",
 //				perEspera->personaje->simbolo);
