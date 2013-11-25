@@ -43,6 +43,7 @@ typedef struct {
 	coordenada_t *coordPosicion;
 	int objetivoActual;
 	int sockfdPlanificador;
+	int estadoPersonaje;
 } hilo_personaje_t;
 
 typedef struct {

@@ -282,7 +282,7 @@ int informarPersonajeFinalizado(datos_planificador_t *datosPlan,
 	int nbytes = enviarPersonajeFinalizo(datosPlan, sockfdPersonaje);
 	log_info(logFile, "Personaje %c finalizo el nivel %s", personaje->simbolo,
 			datosPlan->nombre);
-	datosPersonaje_destroy(personaje);
+//	datosPersonaje_destroy(personaje);
 
 	return nbytes;
 }

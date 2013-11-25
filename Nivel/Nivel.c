@@ -598,7 +598,7 @@ void mandarRecursosLiberados(t_list* recursosLiberados) {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 t_list* esperarRecursosAsignados() {
-	log_info(logFile, "Reciviendo recursos asignados");
+	log_info(logFile, "Recibiendo recursos asignados");
 	header_t header;
 	t_list* asignados = NULL;
 	char* data;
@@ -617,7 +617,7 @@ t_list* esperarRecursosAsignados() {
 		}
 
 	} else {
-		log_error(logFile, "Mensaje inesperado del Orquestador");
+		log_error(logFile, "Mensaje inesperado del Orquestador al esperar asignados");
 	}
 	free(data);
 	return asignados;
