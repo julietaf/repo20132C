@@ -32,7 +32,7 @@ typedef struct {
 } configuracion_personaje_t;
 
 typedef struct {
-	pthread_t *hilo;
+	pthread_t hilo;
 	char *nivel;
 	char **objetivos;
 	char *ipOrquestador;
@@ -99,4 +99,5 @@ void crearClientePlanificador(hilo_personaje_t* datos);
 void inicializarLog();
 void matarHilos();
 int gestionarFinNivel(char id);
+void enviarFinNivel(hilo_personaje_t *datos);
 #endif /* PERSONAJE_H_ */

@@ -31,14 +31,14 @@ int main(void) {
 				i++) {
 
 			dataHilo = crearDatosPersonaje(i);
-			pthread_create(dataHilo->hilo, NULL, (void *) hiloPersonaje,
-					(void *) dataHilo);
+			pthread_create(&dataHilo->hilo, NULL, (void *) hiloPersonaje, (void *) dataHilo);
+//			pthread_create(&hi, NULL, (void *) hiloPersonaje, (void *) dataHilo);
 			list_add(hilos, dataHilo);
 		}
 
 		while (1){
 			sem_wait(&sHiloTermino);
-			log_debug(logFile, "Semaforo main habilito");
+			log_debug(logFile, "Semaforo main habilito, joineando hilos");
 			if (estado->motivo == FIN_REINICIO_PLAN){//Reinicia el plan
 				matarHilos();
 				continuar = mostrarContinue();
@@ -55,11 +55,11 @@ int main(void) {
 			break;
 		}
 
-	} while (estado->motivo == FIN_REINICIO_PLAN);
+	} while (1);
 
 	enviarSuccessPersonaje();
 
-	printf("Termino \n");
+	log_debug(logFile, "Termino \n");
 	return EXIT_SUCCESS;
 }
 
@@ -76,7 +76,7 @@ hilo_personaje_t *crearDatosPersonaje(int index) {
 			config_get_array_value(configFile, "planDeNiveles")[index]);
 	char *key = getObjetivoKey(dataHilo->nivel);
 	dataHilo->objetivos = config_get_array_value(configFile, key);
-	dataHilo->hilo = malloc(sizeof(pthread_t));
+//	dataHilo->hilo = malloc(sizeof(pthread_t));
 	dataHilo->simbolo = *config_get_string_value(configFile, "simbolo");
 	free(key);
 
@@ -237,12 +237,12 @@ void matarHilos(){
 		int i;
 		for (i = 0; i < hilos->elements_count; i++) {
 			hilo_personaje_t* datahilo = list_get(hilos, i);
-
-			if (pthread_cancel( (pthread_t) &datahilo->hilo) != 0){
+			if (pthread_cancel( datahilo->hilo) != 0){
 				log_error(logFile, "no se pudo matar el hilo");
+			}else{
+				pthread_join( datahilo->hilo, (void **)NULL);
+				enviarFinNivel(datahilo);
 			}
-//			pthread_join((pthread_t) &datahilo->hilo, (void **)NULL);
-
 		}
 
 }
@@ -272,8 +272,8 @@ int gestionarFinNivel(char id){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void hiloPersonaje(hilo_personaje_t *datos) {
-//	fd_set bagMaster, bagEscucha;
-	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+//	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+//	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 	crearClientePlanificador(datos);
 
 	enviarHandshakePersonaje(datos->sockfdPlanificador);
@@ -286,6 +286,8 @@ void hiloPersonaje(hilo_personaje_t *datos) {
 
 	while (1) {
 
+		log_debug(logFile, "Testeo si me cancelaron");
+//		pthread_testcancel();
 		int nbytes = atenderOrquestador(datos);
 		if (nbytes == 0) {
 			log_warning(logFile, "Se perdio la conexion con plataforma");
@@ -530,6 +532,17 @@ void enviarHandshakePersonaje(int sockfd) {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
+void enviarFinNivel(hilo_personaje_t *datos){
+
+	header_t header;
+	header.type = FINALIZAR_NIVEL;
+	header.length = 0;
+
+	sockets_send(datos->sockfdPlanificador, &header, '\0');
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
 
 void reiniciarDatosNivel(hilo_personaje_t *datos) {
 	datos->objetivoActual = 0;
@@ -544,16 +557,13 @@ void reiniciarDatosNivel(hilo_personaje_t *datos) {
 
 void rutinaFinalizarNivel(hilo_personaje_t *datos) {
 	log_info(logFile, "Finalizar Nivel");
-	header_t header;
-	header.type = FINALIZAR_NIVEL;
-	header.length = 0;
-
-	sockets_send(datos->sockfdPlanificador, &header, '\0');
-
+	enviarFinNivel(datos);
 	close(datos->sockfdPlanificador);
 	datos->estadoPersonaje = FIN_NIVEL;
 
 }
 
-//-----------------------------------------------------------------------------------------------------------------------------
+
+
+
 
