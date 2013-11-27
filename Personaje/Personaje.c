@@ -9,7 +9,7 @@
 
 int main(void) {
 
-	int i, continuar;
+	int i, terminar = 0;
 	hilo_personaje_t *dataHilo;
 
 	signal(SIGUSR1, (funcPtr) signalRutinaVidas);
@@ -32,30 +32,19 @@ int main(void) {
 
 			dataHilo = crearDatosPersonaje(i);
 			pthread_create(&dataHilo->hilo, NULL, (void *) hiloPersonaje, (void *) dataHilo);
-//			pthread_create(&hi, NULL, (void *) hiloPersonaje, (void *) dataHilo);
 			list_add(hilos, dataHilo);
 		}
 
 		while (1){
 			sem_wait(&sHiloTermino);
-			log_debug(logFile, "Semaforo main habilito, joineando hilos");
-			if (estado->motivo == FIN_REINICIO_PLAN){//Reinicia el plan
-				matarHilos();
-				continuar = mostrarContinue();
+			terminar = gestionarFinHilo();
+			if (terminar){
 				break;
-			}else{// Termino un hilo
-				if (gestionarFinNivel(estado->id)){//Si terminaron todos
-					break;
-				}
 			}
 
 		}
 
-		if (continuar == 0) {//SI no decidio continuar
-			break;
-		}
-
-	} while (1);
+	} while (!terminar);
 
 	enviarSuccessPersonaje();
 
@@ -117,17 +106,6 @@ void rutinaReinicioPlan() {
 	estado->id = '\0';
 	estado->motivo = FIN_REINICIO_PLAN;
 	sem_post(&sHiloTermino);
-//	int i;
-//	for (i = 0; i < hilos->elements_count; i++) {
-//		hilo_personaje_t* hilo = list_get(hilos, i);
-//
-//		header_t head;
-//		head.type = NOTIFICAR_REINICIO_PLAN;
-//		head.length = 0;
-//
-//		sockets_send(hilo->sockfdPlanificador, &head, '\0');
-//
-//	}
 
 }
 
@@ -250,20 +228,38 @@ void matarHilos(){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 int gestionarFinNivel(char id){
-	log_info(logFile, "Gestion hilo: %c, fin de nivel", id);
+	log_info(logFile, "Gestion del hilo por fin de nivel");
 	int i;
 
 	for (i = 0; i < hilos->elements_count; i++){
 		hilo_personaje_t* hilo = list_get(hilos, i);
 		if (hilo->estadoPersonaje == FIN_NIVEL){
-			log_info(logFile, "Sacando personaje: %c ", hilo->simbolo);
+			log_info(logFile, "Sacando personaje: %c del nivel: %s", hilo->simbolo, hilo->nivel);
 			list_remove(hilos, i);
-			dataHiloDestroy(hilo);
+//			dataHiloDestroy(hilo);
 			break;
 		}
 	}
 
 	return list_is_empty(hilos);
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+int gestionarFinHilo() {
+	int ret;
+
+	log_debug(logFile, "Semaforo main habilito, joineando hilos");
+	if (estado->motivo == FIN_REINICIO_PLAN) { //Reinicia el plan
+		matarHilos();
+		ret = (mostrarContinue() == 0);
+
+	} else { // Termino un hilo
+		ret = gestionarFinNivel(estado->id); //Si terminaron todos
+
+	}
+
+	return ret;
 }
 
 

@@ -100,4 +100,5 @@ void inicializarLog();
 void matarHilos();
 int gestionarFinNivel(char id);
 void enviarFinNivel(hilo_personaje_t *datos);
+int gestionarFinHilo();
 #endif /* PERSONAJE_H_ */
