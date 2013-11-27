@@ -95,6 +95,7 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 	case OTORGAR_RECURSO:
 		coordenadas_destroy(datosPlan->personajeEnMovimiento->coordObjetivo);
 		datosPlan->personajeEnMovimiento->coordObjetivo = NULL;
+		datosPlan->personajeEnMovimiento->objetivo = '\0';
 		informarSolicitudRecurso(datosPlan->personajeEnMovimiento, header.type);
 
 		if (datosPlan->algoritmo == SRDF) {
@@ -166,6 +167,8 @@ int gestionarDesbloqueoPersonajes(header_t *header,
 		nbytes = sockets_send(datosPlan->sockfdNivel, &header, '\0');
 	} else {
 		data = malloc(header->length);
+		nbytes = recv(datosPlan->sockfdNivel, data, header->length,
+				MSG_WAITALL);
 		t_list *recursosLiberados = listaRecursos_deserializer(data,
 				header->length);
 		free(data);
@@ -173,6 +176,7 @@ int gestionarDesbloqueoPersonajes(header_t *header,
 				datosPlan);
 		nbytes = informarRecursosUsados(recursosUsados, datosPlan);
 		list_destroy_and_destroy_elements(recursosUsados, (void *) free);
+		list_destroy_and_destroy_elements(recursosLiberados, (void *) free);
 	}
 
 	return nbytes;
@@ -279,10 +283,12 @@ int informarPersonajeFinalizado(datos_planificador_t *datosPlan,
 		int sockfdPersonaje) {
 	datos_personaje_t *personaje = removerPersonajePorSockfd(datosPlan,
 			sockfdPersonaje);
-	int nbytes = enviarPersonajeFinalizo(datosPlan, sockfdPersonaje);
+	int nbytes = enviarPersonajeFinalizo(datosPlan, personaje->simbolo);
 	log_info(logFile, "Personaje %c finalizo el nivel %s", personaje->simbolo,
 			datosPlan->nombre);
-//	datosPersonaje_destroy(personaje);
+	FD_CLR(personaje->sockfd, datosPlan->bagMaster);
+	close(personaje->sockfd);
+	datosPersonaje_destroy(personaje);
 
 	return nbytes;
 }
@@ -347,6 +353,7 @@ int esperarSolicitudRecurso(datos_planificador_t *datosPlan,
 		break;
 	case OTORGAR_RECURSO:
 		coordenadas_destroy(personaje->coordObjetivo);
+		personaje->coordObjetivo = NULL;
 		personaje->objetivo = '\0';
 		pthread_mutex_lock(datosPlan->mutexColas);
 		queue_push(datosPlan->personajesListos, personaje);
@@ -568,6 +575,7 @@ void desbloquearPersonaje(datos_personaje_t *perDesbloqueado,
 			personajesBloqueados, (void *) _is_personaje);
 	coordenadas_destroy(perDesbloqueado->coordObjetivo);
 	perDesbloqueado->coordObjetivo = NULL;
+	perDesbloqueado->objetivo = '\0';
 	pthread_mutex_lock(datosPlan->mutexColas);
 	queue_push(personajesListos, personajeDesbloqueado);
 	pthread_mutex_unlock(datosPlan->mutexColas);

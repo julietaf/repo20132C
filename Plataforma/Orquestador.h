@@ -59,7 +59,6 @@ typedef struct {
 
 configuracion_plataforma_t *configuracion;
 t_log *logFile;
-//t_dictionary *dicPlanificadores;
 t_list *listaPlanificadores, *listaEspera;
 
 void orquestador(void);
