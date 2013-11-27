@@ -84,5 +84,6 @@ void chequearUltimoPersonaje(void);
 int tienePersonajesActivos(datos_planificador_t *unPlanificador);
 void atenderNuevoPersonaje(int sockfd);
 datos_planificador_t *buscarPlanificador(char *nombre);
+void logguearFinPlan(header_t *header,int sockfd);
 
 #endif /* ORQUESTADOR_H_ */
