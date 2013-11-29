@@ -100,8 +100,8 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 	if (nbytes == 0) {
 		close(datosPlan->sockfdNivel);
 		FD_CLR(datosPlan->sockfdNivel, datosPlan->bagMaster);
-		log_error(logFile,
-				"Nivel %s se desconecto inesperadamente.", datosPlan->nombre);
+		log_error(logFile, "Nivel %s se desconecto inesperadamente.",
+				datosPlan->nombre);
 	}
 
 	return nbytes;
@@ -192,7 +192,6 @@ void moverPersonaje(datos_planificador_t *datosPlan) {
 }
 
 void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
-	//TODO: implementar mutex
 	if (datosPlan->personajeEnMovimiento == NULL ) {
 		datosPlan->quantumCorriente = datosPlan->quatum;
 		pthread_mutex_lock(datosPlan->mutexColas);
@@ -321,7 +320,6 @@ int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
 
 int esperarSolicitudRecurso(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje) {
-	//TODO: implementar mutexes.
 	header_t header;
 	int nbytes, algoritmoActualizado = 0;
 
@@ -331,7 +329,9 @@ int esperarSolicitudRecurso(datos_planificador_t *datosPlan,
 	recv(datosPlan->sockfdNivel, &header, sizeof(header_t), MSG_WAITALL);
 
 	switch (header.type) {
-	case NEGAR_RECURSO:
+	case NEGAR_RECURSO: //TODO: chequear logica de personaje bloqueado.
+		datosPlan->personajeEnMovimiento = NULL;
+		datosPlan->quantumCorriente = 0;
 		pthread_mutex_lock(datosPlan->mutexColas);
 		queue_push(datosPlan->personajesBloqueados, personaje);
 		pthread_mutex_unlock(datosPlan->mutexColas);
@@ -349,8 +349,8 @@ int esperarSolicitudRecurso(datos_planificador_t *datosPlan,
 				personaje->simbolo);
 		break;
 	case NOTIFICAR_ALGORITMO_PLANIFICACION:
-		//TODO:implementar llamada en caso de desincronizacion.
 		actualizarAlgoritmo(&header, datosPlan);
+		algoritmoActualizado = 1;
 		esperarSolicitudRecurso(datosPlan, personaje);
 		break;
 	}
@@ -396,7 +396,6 @@ int esperarUbicacionCaja(datos_planificador_t *datosPlan,
 				respuesta + sizeof(char));
 		break;
 	case NOTIFICAR_ALGORITMO_PLANIFICACION:
-		//TODO:implementar llamada en caso de desincronizacion.
 		actualizarAlgoritmo(&header, datosPlan);
 		esperarUbicacionCaja(datosPlan, unPersonaje);
 		break;

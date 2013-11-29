@@ -114,10 +114,10 @@ void chequearUltimoPersonaje(void) {
 	}
 
 	if (!hayPersonajesActivos) {
-		printf("Desea enfrentar a Koopa? y/n");
+		printf("Desea enfrentar a Koopa? y/n\n");
 
 		if ((c = getchar()) == 'y') {
-			printf("Aqui se llamaria a koopa.");
+			printf("Aqui se llamaria a koopa.\n");
 //			char *sols[] = { "koopa", configObj->solicitudesKoopa, (char *) 0 };
 //			execv(configObj->binarioKoopa, sols);
 		}
