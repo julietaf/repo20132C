@@ -25,7 +25,7 @@ endif
 all: Plataforma
 
 dependents:
-	-cd /home/utnso/workspace/tp-2013-2c-lp2014/commons/Debug && $(MAKE) clean all
+	-cd /home/utnso/workspace/tp-2013-2c-lp2014/commons/Debug && $(MAKE) all
 
 # Tool invocations
 Plataforma: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2013-2c-lp2014/commons/Debug/libcommons.so
