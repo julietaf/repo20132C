@@ -562,8 +562,13 @@ void reiniciarDatosNivel(hilo_personaje_t *datos) {
 	if (datos->coordPosicion == NULL ) {
 		datos->coordPosicion = malloc(sizeof(coordenada_t));
 	}
+	
 	modificarCoordenada(datos->coordPosicion, 0, 0);
-
+	
+	if (datos->coordObjetivo != NULL ) {
+		free(datos->coordObjetivo);
+		datos->coordObjetivo = NULL;
+	}
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
