@@ -31,7 +31,7 @@ int llamadaSelect(datos_planificador_t *datosPlan, fd_set *bagEscucha) {
 	struct timeval timeout;
 	*bagEscucha = *datosPlan->bagMaster;
 	timeout.tv_sec = div(datosPlan->retardo, 1000).quot;
-	timeout.tv_usec = div(datosPlan->retardo, 1000).rem;
+	timeout.tv_usec = div(datosPlan->retardo, 1000).rem * 1000;
 
 	return select(datosPlan->sockfdMax + 1, bagEscucha, NULL, NULL, &timeout);
 }
