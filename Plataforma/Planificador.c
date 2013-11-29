@@ -144,10 +144,16 @@ int removerPersonaje(header_t *header, datos_planificador_t *datosPlan,
 	free(data);
 	datos_personaje_t *personajeMuerto = removerPersonajePorSimbolo(datosPlan,
 			idPersonaje);
-	nbytes = notificarMuertePersonaje(personajeMuerto, datosPlan);
-	log_info(logFile, "Personaje %c muerto por %s.", personajeMuerto->simbolo,
-			motivo);
-	datosPersonaje_destroy(personajeMuerto);
+
+	if (personajeMuerto != NULL ) {
+		nbytes = notificarMuertePersonaje(personajeMuerto, datosPlan);
+		log_info(logFile, "Personaje %c muerto por %s.",
+				personajeMuerto->simbolo, motivo);
+		FD_CLR(personajeMuerto->sockfd, datosPlan->bagMaster);
+		close(personajeMuerto->sockfd);
+		datosPersonaje_destroy(personajeMuerto);
+	}
+
 	t_list *recursosUsados = desbloquearPersonajes(recursosLiberados,
 			datosPlan);
 	nbytes = informarRecursosUsados(recursosUsados, datosPlan);
