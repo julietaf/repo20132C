@@ -146,6 +146,15 @@ datos_planificador_t *buscarPlanificador(char *nombre) {
 	return list_find(listaPlanificadores, (void *) _is_planificador);
 }
 
+datos_planificador_t *removerPlanificador(char *nombre) {
+	int _is_planificador(datos_planificador_t *plan) {
+		return strcmp(plan->nombre, nombre) == 0;
+	}
+
+	return list_remove_by_condition(listaPlanificadores,
+			(void *) _is_planificador);
+}
+
 void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 		char *nombreNivel) {
 	datos_planificador_t *datosPlanificador = buscarPlanificador(nombreNivel);
