@@ -689,6 +689,7 @@ void tratarModificacionAlgoritmo(int file_descriptor) {
 
 void inicializarLog(){
 
+	remove(LOG_PATH);
 	logFile = log_create(LOG_PATH, "ProcesoNivel", false, log_level_from_string(configObj->logLevel));
 	separador_log(configObj->nombre);
 }
@@ -701,7 +702,16 @@ void enemigo(int idEnemigo) {
 	t_list* bufferMovimiento = list_create();
 	coordenada_t* posicion = malloc(sizeof(coordenada_t));
 	agregarEnemigo(idEnemigo, posicion);
+	int usegundos = (configObj->sleepEnemigos * 1000);
+	int sec  = div(usegundos, 1000000).quot;// para sleep
+	int usec = div(usegundos, 1000000).rem;// para usleep
+	log_info(logFile, "Retardo enemigo segundos: %d, micro: %d", sec, usec);
+
 	while (1) {
+
+		sleep(sec);
+	    usleep(usec);
+
 		cazarPersonajes(bufferMovimiento, posicion);
 		moverEnemigo(listaEnemigos, idEnemigo, posicion->ejeX, posicion->ejeY);
 
@@ -732,14 +742,7 @@ void agregarEnemigo(int idEnemigo, coordenada_t* posicion) {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void cazarPersonajes(t_list* bufferMovimiento, coordenada_t* posicion) {
-//	sleep(configObj->sleepEnemigos);
-	int usegundos = (configObj->sleepEnemigos * 1000);
-	//en el caseo de que al pasarlo a segundos sea con fraccion
-	int sec  = div(usegundos, 1000000).quot;// para sleep
-	int usec = div(usegundos, 1000000).rem;// para usleep
-	log_info(logFile, "Retardo enemigo segundos: %d, micro: %d", sec, usec);
-	sleep(sec);
-    usleep(usec);
+
 	if (hayPersonajes()) {
 		perseguirPersonaje(posicion);
 	} else {

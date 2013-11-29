@@ -204,6 +204,7 @@ void enviarSuccessPersonaje(){
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void inicializarLog(){
+	remove(LOG_PATH);
 	logFile = log_create(LOG_PATH, config->nombre, false, LOG_LEVEL_DEBUG);
 	log_info(logFile, "----------------------------- %s --------------------------------", config->nombre);
 
