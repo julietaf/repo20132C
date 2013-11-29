@@ -92,31 +92,6 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 	case UBICACION_CAJA:
 		gestionarUbicacionCaja(datosPlan, &header);
 		break;
-	case OTORGAR_RECURSO:
-		coordenadas_destroy(datosPlan->personajeEnMovimiento->coordObjetivo);
-		datosPlan->personajeEnMovimiento->coordObjetivo = NULL;
-		datosPlan->personajeEnMovimiento->objetivo = '\0';
-		informarSolicitudRecurso(datosPlan->personajeEnMovimiento, header.type);
-
-		if (datosPlan->algoritmo == SRDF) {
-			queue_push(datosPlan->personajesListos,
-					datosPlan->personajeEnMovimiento);
-			datosPlan->personajeEnMovimiento = NULL;
-		}
-		break;
-	case NEGAR_RECURSO:
-		//TODO: implementar mutex
-		queue_push(datosPlan->personajesBloqueados,
-				datosPlan->personajeEnMovimiento);
-		datosPlan->personajeEnMovimiento = NULL;
-		informarSolicitudRecurso(datosPlan->personajeEnMovimiento, header.type);
-
-		if (datosPlan->algoritmo == SRDF) {
-			queue_push(datosPlan->personajesBloqueados,
-					datosPlan->personajeEnMovimiento);
-			datosPlan->personajeEnMovimiento = NULL;
-		}
-		break;
 	case NOTIFICACION_RECURSOS_LIBERADOS:
 		gestionarDesbloqueoPersonajes(&header, datosPlan);
 		break;
@@ -125,8 +100,8 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 	if (nbytes == 0) {
 		close(datosPlan->sockfdNivel);
 		FD_CLR(datosPlan->sockfdNivel, datosPlan->bagMaster);
-		log_error(logFile, "Nivel %s se desconecto inesperadamente.",
-				datosPlan->nombre);
+		log_error(logFile,
+				"Nivel %s se desconecto inesperadamente.", datosPlan->nombre);
 	}
 
 	return nbytes;
@@ -224,7 +199,11 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 		datosPlan->personajeEnMovimiento = queue_pop(
 				datosPlan->personajesListos);
 		pthread_mutex_unlock(datosPlan->mutexColas);
+		log_info(logFile, "Personaje %c seleccionado por RR.",
+				datosPlan->personajeEnMovimiento->simbolo);
 	} else if (datosPlan->quantumCorriente == 0) {
+		log_info(logFile, "Personaje %c finalizo quantum.",
+				datosPlan->personajeEnMovimiento->simbolo);
 		pthread_mutex_lock(datosPlan->mutexColas);
 		queue_push(datosPlan->personajesListos,
 				datosPlan->personajeEnMovimiento);
@@ -232,6 +211,8 @@ void seleccionarPorRoundRobin(datos_planificador_t *datosPlan) {
 		datosPlan->personajeEnMovimiento = queue_pop(
 				datosPlan->personajesListos);
 		pthread_mutex_unlock(datosPlan->mutexColas);
+		log_info(logFile, "Personaje %c seleccionado por RR.",
+				datosPlan->personajeEnMovimiento->simbolo);
 	}
 
 	enviarTurnoConcedido(datosPlan->personajeEnMovimiento);
@@ -416,6 +397,8 @@ int esperarUbicacionCaja(datos_planificador_t *datosPlan,
 		break;
 	case NOTIFICAR_ALGORITMO_PLANIFICACION:
 		//TODO:implementar llamada en caso de desincronizacion.
+		actualizarAlgoritmo(&header, datosPlan);
+		esperarUbicacionCaja(datosPlan, unPersonaje);
 		break;
 	}
 

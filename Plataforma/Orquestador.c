@@ -63,6 +63,10 @@ void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax) {
 		enviarHandshakeOrquestador(nuevoSockfd);
 		crearNuevoHiloPlanificador(nuevoSockfd);
 		break;
+	case FINALIZAR_PLAN: //un personaje finalizo su plan de niveles.
+		logguearFinPlan(&header, nuevoSockfd);
+		chequearUltimoPersonaje();
+		break;
 	}
 }
 
@@ -86,10 +90,14 @@ void atenderNuevoPersonaje(int sockfd) {
 	case NOTIFICAR_DATOS_PERSONAJE:
 		delegarAlPlanificador(&header, sockfd);
 		break;
-	case FINALIZAR_NIVEL: //TODO: chequear este mensaje con proceso Nivel.
-		chequearUltimoPersonaje();
-		break;
 	}
+}
+
+void logguearFinPlan(header_t *header, int sockfd) {
+	char *data = malloc(header->length);
+	recv(sockfd, data, header->length, MSG_WAITALL);
+	log_info(logFile, "Personaje %c finalizo plan de niveles.", data[0]);
+	free(data);
 }
 
 void chequearUltimoPersonaje(void) {
