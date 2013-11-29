@@ -65,5 +65,6 @@ int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
 int informarSolicitudRecurso(datos_personaje_t *personaje, int type);
 int notificarMuertePersonaje(datos_personaje_t *personajeMuerto,
 		datos_planificador_t *datos);
+int llamadaSelect(datos_planificador_t *datosPlan, fd_set *bagEscucha);
 
 #endif /* PLANIFICADOR_H_ */
