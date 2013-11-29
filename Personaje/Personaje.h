@@ -53,9 +53,15 @@ typedef struct {
 
 typedef void (*funcPtr)();
 
-enum enum_finalizacion {
+enum enum_finalizacion_hilo {
 	FIN_REINICIO_PLAN,
 	FIN_NIVEL
+};
+
+enum finalizacion_proceso{
+	FINALIZAR,
+	REINICIAR,
+	ESPERAR_HILO
 };
 
 t_config *configFile;
@@ -101,4 +107,5 @@ void matarHilos();
 int gestionarFinNivel(char id);
 void enviarFinNivel(hilo_personaje_t *datos);
 int gestionarFinHilo();
+void sacarHiloLista(hilo_personaje_t* hiloPersonaje) ;
 #endif /* PERSONAJE_H_ */
