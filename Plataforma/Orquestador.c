@@ -10,6 +10,7 @@
 
 void orquestador(void) {
 	configuracion = getConfiguracion();
+	remove(LOG_PATH);
 	logFile = log_create(LOG_PATH, "Orquestador", false,
 			configuracion->detalleLog);
 	int escuchasfd = sockets_createServer(configuracion->direccionIp,
