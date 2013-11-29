@@ -38,13 +38,13 @@ int main(void) {
 		while (1){
 			sem_wait(&sHiloTermino);
 			terminar = gestionarFinHilo();
-			if (terminar){
+			if (terminar != ESPERAR_HILO){
 				break;
 			}
 
 		}
 
-	} while (!terminar);
+	} while (terminar == REINICIAR);
 
 	enviarSuccessPersonaje();
 
@@ -112,7 +112,7 @@ void rutinaReinicioPlan() {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void dataHiloDestroy(hilo_personaje_t* datos) {
-	//TODO: HIlo????
+
 	free(datos->nivel);
 	free(datos->objetivos);
 	free(datos->ipOrquestador);
@@ -178,6 +178,7 @@ int mostrarContinue() {
 
 		if (r == 'S' || r =='s') {
 			contItentos++;
+			printf("Intentos: %d", contItentos);
 			return 1;
 		} else if (r == 'N' || r== 'n') {
 			return 0;
@@ -212,14 +213,15 @@ void inicializarLog(){
 
 void matarHilos(){
 		log_info(logFile, "Matando Hilos");
-		int i;
-		for (i = 0; i < hilos->elements_count; i++) {
-			hilo_personaje_t* datahilo = list_get(hilos, i);
+
+		while (hilos->elements_count != 0) {
+			hilo_personaje_t* datahilo = list_get(hilos, 0);
 			if (pthread_cancel( datahilo->hilo) != 0){
 				log_error(logFile, "no se pudo matar el hilo");
 			}else{
 				pthread_join( datahilo->hilo, (void **)NULL);
 				enviarFinNivel(datahilo);
+				sacarHiloLista(datahilo);
 			}
 		}
 
@@ -234,8 +236,7 @@ int gestionarFinNivel(char id){
 	for (i = 0; i < hilos->elements_count; i++){
 		hilo_personaje_t* hilo = list_get(hilos, i);
 		if (hilo->estadoPersonaje == FIN_NIVEL){
-			log_info(logFile, "Sacando personaje: %c del nivel: %s", hilo->simbolo, hilo->nivel);
-			list_remove(hilos, i);
+			sacarHiloLista(hilo);//TODO: Testiar refactoring aca
 //			dataHiloDestroy(hilo);
 			break;
 		}
@@ -252,14 +253,29 @@ int gestionarFinHilo() {
 	log_debug(logFile, "Semaforo main habilito, joineando hilos");
 	if (estado->motivo == FIN_REINICIO_PLAN) { //Reinicia el plan
 		matarHilos();
-		ret = (mostrarContinue() == 0);
+		ret = mostrarContinue() ? REINICIAR : FINALIZAR;
 
 	} else { // Termino un hilo
-		ret = gestionarFinNivel(estado->id); //Si terminaron todos
+		ret = gestionarFinNivel(estado->id) ? FINALIZAR : ESPERAR_HILO; //Si terminaron todos
 
 	}
 
 	return ret;
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void sacarHiloLista(hilo_personaje_t* hiloPersonaje) {
+
+
+	int _is_personaje(hilo_personaje_t *hPersonaje) {
+		return hPersonaje->hilo == hiloPersonaje->hilo;
+	}
+
+	log_info(logFile, "Sacando personaje: %c del nivel: %s", hiloPersonaje->simbolo, hiloPersonaje->nivel);
+	list_remove_by_condition(hilos, (void *) _is_personaje);
+//	dataHiloDestroy(personaje); TODO: Ver por que rompe si quiero volver a lanzar el hilo
+
 }
 
 
@@ -282,7 +298,7 @@ void hiloPersonaje(hilo_personaje_t *datos) {
 
 	while (1) {
 
-		log_debug(logFile, "Testeo si me cancelaron");
+//		log_debug(logFile, "Testeo si me cancelaron");
 //		pthread_testcancel();
 		int nbytes = atenderOrquestador(datos);
 		if (nbytes == 0) {

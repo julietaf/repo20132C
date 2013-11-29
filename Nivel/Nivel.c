@@ -480,8 +480,8 @@ void notificarMuertePersonaje(char id, int causa) {
 	h.length = sizeof(char);
 
 	adquiridos = getObjetosAdquiridosSerializable(listaPersonajes, id);
+	matarPersonaje(listaPersonajes, listaRecursos, id);
 	char* adqData = listaRecursos_serializer(adquiridos, &length);
-
 	char* data = malloc(h.length + length);
 	memcpy(data, &id, h.length);
 	memcpy(data + h.length, adqData, length);
