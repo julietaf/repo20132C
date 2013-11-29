@@ -520,7 +520,7 @@ void dibujar() {
 	if (desactivarGUI){
 		return;
 	}
-	log_info(logFile, "Dibujando...");
+	log_trace(logFile, "Dibujando...");
 	pthread_mutex_lock(mutexDibujables);
 
 	t_list* tempI;
@@ -535,7 +535,7 @@ void dibujar() {
 		log_info(logFile, "No se puedo dibujar");
 		//      EXIT_FAILURE;
 	} else {
-		log_info(logFile, "Dibujado...");
+		log_trace(logFile, "Dibujado...");
 	}
 
 	pthread_mutex_unlock(mutexDibujables);
@@ -733,13 +733,13 @@ void agregarEnemigo(int idEnemigo, coordenada_t* posicion) {
 
 void cazarPersonajes(t_list* bufferMovimiento, coordenada_t* posicion) {
 //	sleep(configObj->sleepEnemigos);
-	int usegundos = (configObj->sleepEnemigos * 1000000);
+	int usegundos = (configObj->sleepEnemigos * 1000);
 	//en el caseo de que al pasarlo a segundos sea con fraccion
-	int sec = div(usegundos, 1000000000).quot;// para sleep
-//	int usec = div(usegundos, 1000000000).rem;// para usleep
-	log_info(logFile, "Retardo enemigo: %d", sec);
+	int sec  = div(usegundos, 1000000).quot;// para sleep
+	int usec = div(usegundos, 1000000).rem;// para usleep
+	log_info(logFile, "Retardo enemigo segundos: %d, micro: %d", sec, usec);
 	sleep(sec);
-
+    usleep(usec);
 	if (hayPersonajes()) {
 		perseguirPersonaje(posicion);
 	} else {
@@ -886,7 +886,8 @@ int validarPosicionEnemigo(coordenada_t* posicion) {
 
 void deadLock() {
 
-	int wait = configObj->deadlockTime;
+	int usegundos = (configObj->deadlockTime * 1000000);
+	int wait = div(usegundos, 1000000000).quot;// para sleep
 	log_info(logFile, "DeadLock se ejecutara cada: %d segundos", wait);
 
 	while (1) {
@@ -910,6 +911,13 @@ void gestionarDeadLock() {
 		list_destroy_and_destroy_elements(bloqueados, (void *)free);
 		return;
 	}
+
+	logBloqueados(bloqueados);
+
+	if(!configObj->recovery){
+		return;
+	}
+
 	menor = list_get(bloqueados, 0);
 	for (i = 0; i < list_size(bloqueados); i++) {
 		temp = list_get(bloqueados, i);
@@ -922,4 +930,23 @@ void gestionarDeadLock() {
 	list_destroy_and_destroy_elements(bloqueados, (void *)free);
 }
 
+//-----------------------------------------------------------------------------------------------------------------------------
+
+void logBloqueados(t_list* bloqueados){
+
+	int i;
+	char *s = string_new();
+
+	ITEM_NIVEL * temp = NULL;
+	log_info(logFile, "Se detecto interbloque entre %d personajes", bloqueados->elements_count);
+	for (i = 0; i < bloqueados->elements_count; i++){
+		temp = list_get(bloqueados, i);
+		string_append(&s, "-");
+		string_append(&s, &temp->id);
+
+	}
+
+	log_info(logFile, "Personajes involucharods: %s", s);
+	free(s);
+}
 

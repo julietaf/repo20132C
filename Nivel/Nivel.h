@@ -108,6 +108,7 @@ void inicializarLog();
 //-----------------------Hilo DeadLock-------------------------------
 void deadLock();
 void gestionarDeadLock();
+void logBloqueados(t_list* bloqueados);
 //-----------------------Hilo Enemigo--------------------------------
 void enemigo(int idEnemigo);
 void agregarEnemigo(int idEnemigo, coordenada_t* posicion);
