@@ -13,19 +13,9 @@ void planificador(datos_planificador_t *datos) {
 	FD_SET(datos->sockfdNivel, datos->bagMaster);
 	int retval;
 	datos->sockfdMax = datos->sockfdNivel;
-	struct timeval timeout;
-
-	int usegundos = (datos->retardo * 1000000);
-	int sec = div(usegundos, 1000000000).quot;
-	int usec = div(usegundos, 1000000).rem;
 
 	while (1) {
-		bagEscucha = *datos->bagMaster;
-		timeout.tv_sec = sec;
-		timeout.tv_usec = usec;
-
-		retval = select(datos->sockfdMax + 1, &bagEscucha, NULL, NULL,
-				&timeout);
+		retval = llamadaSelect(datos, &bagEscucha);
 
 		if (retval == -1) //Ocurrio un error
 			log_error(logFile, "Error en select");
@@ -35,6 +25,15 @@ void planificador(datos_planificador_t *datos) {
 				datos->personajesListos) || datos->personajeEnMovimiento != NULL) //Se produjo el timeout
 			moverPersonaje(datos);
 	}
+}
+
+int llamadaSelect(datos_planificador_t *datosPlan, fd_set *bagEscucha) {
+	struct timeval timeout;
+	*bagEscucha = *datosPlan->bagMaster;
+	timeout.tv_sec = div(datosPlan->retardo, 1000).quot;
+	timeout.tv_usec = div(datosPlan->retardo, 1000).rem * 1000;
+
+	return select(datosPlan->sockfdMax + 1, bagEscucha, NULL, NULL, &timeout);
 }
 
 int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje) {
@@ -100,6 +99,7 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 	if (nbytes == 0) {
 		close(datosPlan->sockfdNivel);
 		FD_CLR(datosPlan->sockfdNivel, datosPlan->bagMaster);
+//		datos_planificador_t *self = removerPlanificador(datosPlan->nombre);
 		log_error(logFile, "Nivel %s se desconecto inesperadamente.",
 				datosPlan->nombre);
 	}
@@ -285,7 +285,7 @@ int reenviarNotificacionMovimiento(datos_planificador_t *datosPlan,
 	recv(sockfdPersonaje, data, header->length, MSG_WAITALL);
 	datosPlan->personajeEnMovimiento->ubicacionActual =
 			coordenadas_deserializer(data + sizeof(char));
-	log_info(logFile, "Personaje %c se movio a X: %d Y: %d.",
+	log_trace(logFile, "Personaje %c se movio a X: %d Y: %d.",
 			datosPlan->personajeEnMovimiento->simbolo,
 			datosPlan->personajeEnMovimiento->ubicacionActual->ejeX,
 			datosPlan->personajeEnMovimiento->ubicacionActual->ejeY);
@@ -330,6 +330,8 @@ int esperarSolicitudRecurso(datos_planificador_t *datosPlan,
 
 	switch (header.type) {
 	case NEGAR_RECURSO: //TODO: chequear logica de personaje bloqueado.
+		log_info(logFile, "Recurso %c negado a Personaje %c.",
+				personaje->objetivo, personaje->simbolo);
 		datosPlan->personajeEnMovimiento = NULL;
 		datosPlan->quantumCorriente = 0;
 		pthread_mutex_lock(datosPlan->mutexColas);
@@ -339,6 +341,8 @@ int esperarSolicitudRecurso(datos_planificador_t *datosPlan,
 				personaje->simbolo);
 		break;
 	case OTORGAR_RECURSO:
+		log_info(logFile, "Recurso %c otorgado a Personaje %c.",
+				personaje->objetivo, personaje->simbolo);
 		coordenadas_destroy(personaje->coordObjetivo);
 		personaje->coordObjetivo = NULL;
 		personaje->objetivo = '\0';
