@@ -25,7 +25,7 @@ endif
 all: Nivel
 
 dependents:
-	-cd /home/utnso/workspace/tp-2013-2c-lp2014/commons/Debug && $(MAKE) all
+	-cd /home/utnso/workspace/tp-2013-2c-lp2014/commons/Debug && $(MAKE) clean all
 
 # Tool invocations
 Nivel: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2013-2c-lp2014/commons/Debug/libcommons.so
