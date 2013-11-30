@@ -744,6 +744,7 @@ void agregarEnemigo(int idEnemigo, coordenada_t* posicion) {
 void cazarPersonajes(t_list* bufferMovimiento, coordenada_t* posicion) {
 
 	if (hayPersonajes()) {
+		list_clean(bufferMovimiento);
 		perseguirPersonaje(posicion);
 	} else {
 
