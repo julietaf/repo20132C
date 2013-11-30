@@ -67,7 +67,7 @@ enum finalizacion_proceso{
 t_config *configFile;
 configuracion_personaje_t *config;
 t_log *logFile;
-int flagReinicioPlan = 0, contItentos = 0;
+int flagReinicioPlan = 0, contItentos = 0, vidasPlan = 0;
 t_list * hilos;
 estado_t* estado;
 pthread_mutex_t *mutexContadorVidas;

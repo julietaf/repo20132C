@@ -68,6 +68,7 @@ enum enum_protocolo {
 	HANDSHAKE_PLANIFICADOR,
 	HANDSHAKE_ORQUESTADOR,
 	HANDSHAKE_NIVEL,
+	// Confirmacion
 // Hilo Personaje >>>> Planificador
 	NOTIFICAR_DATOS_PERSONAJE,
 	UBICACION_CAJA,
