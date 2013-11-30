@@ -97,14 +97,45 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 	}
 
 	if (nbytes == 0) {
-		close(datosPlan->sockfdNivel);
-		FD_CLR(datosPlan->sockfdNivel, datosPlan->bagMaster);
-//		datos_planificador_t *self = removerPlanificador(datosPlan->nombre);
 		log_error(logFile, "Nivel %s se desconecto inesperadamente.",
 				datosPlan->nombre);
+		self_destroy(datosPlan->nombre);
 	}
 
 	return nbytes;
+}
+
+void self_destroy(char *nombre) {
+	int i;
+	datos_personaje_t *unPersonaje;
+	datos_planificador_t *self = removerPlanificador(nombre);
+
+	close(self->sockfdNivel);
+	free(self->bagMaster);
+	free(self->nombre);
+
+	for (i = 0; i < list_size(self->personajesListos->elements); i++) {
+		unPersonaje = list_get(self->personajesListos->elements, i);
+		close(unPersonaje->sockfd);
+		datosPersonaje_destroy(unPersonaje);
+	}
+
+	for (i = 0; i < list_size(self->personajesBloqueados->elements); i++) {
+		unPersonaje = list_get(self->personajesListos->elements, i);
+		close(unPersonaje->sockfd);
+		datosPersonaje_destroy(unPersonaje);
+	}
+
+	if (self->personajeEnMovimiento != NULL ) {
+		close(self->personajeEnMovimiento->sockfd);
+		datosPersonaje_destroy(self->personajeEnMovimiento);
+	}
+
+	pthread_mutex_destroy(self->mutexColas);
+	free(self->mutexColas);
+	pthread_detach(*self->hilo);
+	free(self);
+	pthread_exit((void *) NULL );
 }
 
 int removerPersonaje(header_t *header, datos_planificador_t *datosPlan,
