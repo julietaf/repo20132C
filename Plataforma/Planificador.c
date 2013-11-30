@@ -475,6 +475,7 @@ datos_personaje_t *removerPersonajePorSockfd(datos_planificador_t *datosPlan,
 
 	datos_personaje_t *unPersonaje = NULL;
 
+	pthread_mutex_lock(datosPlan->mutexColas);
 	if (datosPlan->personajeEnMovimiento != NULL ) {
 		if (datosPlan->personajeEnMovimiento->sockfd == sockfd) {
 			unPersonaje = datosPlan->personajeEnMovimiento;
@@ -493,6 +494,7 @@ datos_personaje_t *removerPersonajePorSockfd(datos_planificador_t *datosPlan,
 				datosPlan->personajesBloqueados->elements,
 				(void *) _is_personaje);
 	}
+	pthread_mutex_unlock(datosPlan->mutexColas);
 
 	return unPersonaje;
 }
@@ -505,6 +507,7 @@ datos_personaje_t *buscarPersonajePorSockfd(datos_planificador_t *datosPlan,
 
 	datos_personaje_t *unPersonaje = NULL;
 
+	pthread_mutex_lock(datosPlan->mutexColas);
 	if (datosPlan->personajeEnMovimiento != NULL ) {
 		if (datosPlan->personajeEnMovimiento->sockfd == sockfdPersonaje) {
 			unPersonaje = datosPlan->personajeEnMovimiento;
@@ -520,6 +523,7 @@ datos_personaje_t *buscarPersonajePorSockfd(datos_planificador_t *datosPlan,
 		unPersonaje = list_find(datosPlan->personajesBloqueados->elements,
 				(void *) _is_personaje);
 	}
+	pthread_mutex_unlock(datosPlan->mutexColas);
 
 	return unPersonaje;
 }
