@@ -10,7 +10,7 @@ t_disco* disco_crear(char* path, t_log* log) {
 	struct stat estadistica;
 	fstat(this->fd,&estadistica);
 	this->tamanio = estadistica.st_size;
-	this->endBlock = this->tamanio / sizeof(GFile);
+	this->endBlock = (this->tamanio / sizeof(GFile)) - 1; // Se le resta 1 porque los números de bloque están basados en 0
 
 	this->mem = mmap(NULL, this->tamanio, PROT_READ | PROT_WRITE, MAP_SHARED, this->fd, 0);
 
