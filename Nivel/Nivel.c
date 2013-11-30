@@ -308,6 +308,10 @@ int atenderMensajePlanificador(int sockfd) {
 			nbytes = recv(sockfd, data, h.length, MSG_WAITALL);
 			tratarFinalizacionPersonaje(data);
 			break;
+		case NOTIFICACION_RECURSOS_ASIGNADOS:
+//			nbytes = recv(sockfd, data, h.length, MSG_WAITALL);
+			esperarRecursosAsignados(h);
+			break;
 		default:
 			log_error(logFile,
 					"Protocolo invalido (%d) para comunicarse con el nivel",
@@ -460,7 +464,7 @@ void tratarFinalizacionPersonaje(char* data) {
 	adquiridos = getObjetosAdquiridosSerializable(listaPersonajes, pId);
 	matarPersonaje(listaPersonajes, listaRecursos, pId);
 	mandarRecursosLiberados(adquiridos);
-	asignados = esperarRecursosAsignados();
+	asignados = esperarRecursosAsignadosMain();
 	actualizarEstado(asignados);
 	listaRecursos_destroy(adquiridos);
 	listaRecursos_destroy(asignados);
@@ -473,7 +477,7 @@ void tratarFinalizacionPersonaje(char* data) {
 void notificarMuertePersonaje(char id, int causa) {
 	header_t h;
 	t_list* adquiridos = NULL;
-	t_list* asignados = NULL;
+//	t_list* asignados = NULL;
 	int16_t length;
 
 	h.type = causa;
@@ -487,11 +491,11 @@ void notificarMuertePersonaje(char id, int causa) {
 	memcpy(data + h.length, adqData, length);
 	h.length += length;
 	sockets_send(plataformaSockfd, &h, data);
-	asignados = esperarRecursosAsignados();
-	actualizarEstado(asignados);
+//	asignados = esperarRecursosAsignados();
+//	actualizarEstado(asignados);
 
 	listaRecursos_destroy(adquiridos);
-	listaRecursos_destroy(asignados);
+//	listaRecursos_destroy(asignados);
 	free(data);
 }
 
@@ -597,7 +601,35 @@ void mandarRecursosLiberados(t_list* recursosLiberados) {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-t_list* esperarRecursosAsignados() {
+t_list* esperarRecursosAsignados(header_t header) {
+	log_info(logFile, "Recibiendo recursos asignados");
+//	header_t header;
+	t_list* asignados = NULL;
+	char* data = NULL;
+//	if (recv(plataformaSockfd, &header, sizeof(header), MSG_WAITALL) == 0) {
+//		log_error(logFile, "Conexion perdida con el orqestador");
+//	}
+//
+//	if (header.type == NOTIFICACION_RECURSOS_ASIGNADOS) {
+		data = malloc(header.length);
+		if (header.length > 0) {
+			recv(plataformaSockfd, data, header.length, MSG_WAITALL);
+			asignados = listaRecursos_deserializer(data, header.length);
+		} else if (header.length == 0) {
+			log_debug(logFile, "El orquestador no uso ningun recurso");
+			return asignados = list_create();
+		}
+
+//	} else {
+//		log_error(logFile, "Mensaje inesperado del Orquestador al esperar asignados");
+//	}
+	free(data);
+	return asignados;
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
+t_list* esperarRecursosAsignadosMain() {
 	log_info(logFile, "Recibiendo recursos asignados");
 	header_t header;
 	t_list* asignados = NULL;

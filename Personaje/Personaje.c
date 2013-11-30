@@ -25,20 +25,22 @@ int main(void) {
 	estado = malloc(sizeof(estado_t));
 
 	do {
+		vidasPlan = config->vidas;
 
 		for (i = 0;
 				config_get_array_value(configFile, "planDeNiveles")[i] != NULL ;
 				i++) {
 
 			dataHilo = crearDatosPersonaje(i);
-			pthread_create(&dataHilo->hilo, NULL, (void *) hiloPersonaje, (void *) dataHilo);
+			pthread_create(&dataHilo->hilo, NULL, (void *) hiloPersonaje,
+					(void *) dataHilo);
 			list_add(hilos, dataHilo);
 		}
 
-		while (1){
+		while (1) {
 			sem_wait(&sHiloTermino);
 			terminar = gestionarFinHilo();
-			if (terminar != ESPERAR_HILO){
+			if (terminar != ESPERAR_HILO) {
 				break;
 			}
 
@@ -99,7 +101,6 @@ void getConfiguracion(void) {
 	config->puertoOrquestador = strtok(NULL, tok);
 }
 
-
 void rutinaReinicioPlan() {
 
 	log_info(logFile, "Reinicio Plan de niveles");
@@ -127,10 +128,13 @@ void dataHiloDestroy(hilo_personaje_t* datos) {
 void signalRutinaVidas() {
 
 	pthread_mutex_lock(mutexContadorVidas);
-	config->vidas++;
+//	config->vidas++;
+	vidasPlan++;
 	pthread_mutex_unlock(mutexContadorVidas);
-	log_info(logFile, "El personaje recibio una vida por señal, Vidas: %d", config->vidas);
-	printf("El personaje recibio una vida por señal, Vidas: %d \n", config->vidas);
+	log_info(logFile, "El personaje recibio una vida por señal, Vidas: %d",
+			vidasPlan);
+	printf("El personaje recibio una vida por señal, Vidas: %d \n",
+			vidasPlan);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -138,8 +142,10 @@ void signalRutinaVidas() {
 void signalRutinaMuerte() {
 
 	int hayVidas = rutinaMuerte();
-	printf("El personaje perdio una vida por señal, Vidas: %d \n", config->vidas);
-	log_info(logFile, "El personaje perdio una vida por señal, Vidas: %d", config->vidas);
+	printf("El personaje perdio una vida por señal, Vidas: %d \n",
+			vidasPlan);
+	log_info(logFile, "El personaje perdio una vida por señal, Vidas: %d",
+			vidasPlan);
 
 	if (!hayVidas) {
 		rutinaReinicioPlan();
@@ -155,8 +161,10 @@ int rutinaMuerte() {
 	log_info(logFile, "Rutina Muerte, descontando vidas...");
 	pthread_mutex_lock(mutexContadorVidas);
 
-	config->vidas--;
-	r = (config->vidas > 0);
+//	config->vidas--;
+//	r = (config->vidas > 0);
+	vidasPlan--;
+	r = (vidasPlan > 0);
 
 	pthread_mutex_unlock(mutexContadorVidas);
 
@@ -176,11 +184,11 @@ int mostrarContinue() {
 		printf("S/N ");
 		scanf("%c", &r);
 
-		if (r == 'S' || r =='s') {
+		if (r == 'S' || r == 's') {
 			contItentos++;
 			printf("Intentos: %d", contItentos);
 			return 1;
-		} else if (r == 'N' || r== 'n') {
+		} else if (r == 'N' || r == 'n') {
 			return 0;
 		}
 
@@ -190,54 +198,57 @@ int mostrarContinue() {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void enviarSuccessPersonaje(){
+void enviarSuccessPersonaje() {
 	log_info(logFile, "Envio mensaje de plan finalizado");
 	header_t header;
 	header.type = FINALIZAR_PLAN;
 	header.length = sizeof(char);
 
-	int sockfdPlatafoma = sockets_createClient(config->ipOrquestador, config->puertoOrquestador);
+	int sockfdPlatafoma = sockets_createClient(config->ipOrquestador,
+			config->puertoOrquestador);
 
 	sockets_send(sockfdPlatafoma, &header, &config->simbolo);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void inicializarLog(){
+void inicializarLog() {
 	remove(LOG_PATH);
 	logFile = log_create(LOG_PATH, config->nombre, false, LOG_LEVEL_DEBUG);
-	log_info(logFile, "----------------------------- %s --------------------------------", config->nombre);
+	log_info(logFile,
+			"----------------------------- %s --------------------------------",
+			config->nombre);
 
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void matarHilos(){
-		log_info(logFile, "Matando Hilos");
+void matarHilos() {
+	log_info(logFile, "Matando Hilos");
 
-		while (hilos->elements_count != 0) {
-			hilo_personaje_t* datahilo = list_get(hilos, 0);
-			if (pthread_cancel( datahilo->hilo) != 0){
-				log_error(logFile, "no se pudo matar el hilo");
-			}else{
-				pthread_join( datahilo->hilo, (void **)NULL);
-				enviarFinNivel(datahilo);
-				sacarHiloLista(datahilo);
-			}
+	while (hilos->elements_count != 0) {
+		hilo_personaje_t* datahilo = list_get(hilos, 0);
+		if (pthread_cancel(datahilo->hilo) != 0) {
+			log_error(logFile, "no se pudo matar el hilo");
+		} else {
+			pthread_join(datahilo->hilo, (void **) NULL );
+			enviarFinNivel(datahilo);
+			sacarHiloLista(datahilo);
 		}
+	}
 
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-int gestionarFinNivel(char id){
+int gestionarFinNivel(char id) {
 	log_info(logFile, "Gestion del hilo por fin de nivel");
 	int i;
 
-	for (i = 0; i < hilos->elements_count; i++){
+	for (i = 0; i < hilos->elements_count; i++) {
 		hilo_personaje_t* hilo = list_get(hilos, i);
-		if (hilo->estadoPersonaje == FIN_NIVEL){
-			sacarHiloLista(hilo);//TODO: Testiar refactoring aca
+		if (hilo->estadoPersonaje == FIN_NIVEL) {
+			sacarHiloLista(hilo); //TODO: Testiar refactoring aca
 //			dataHiloDestroy(hilo);
 			break;
 		}
@@ -268,17 +279,16 @@ int gestionarFinHilo() {
 
 void sacarHiloLista(hilo_personaje_t* hiloPersonaje) {
 
-
 	int _is_personaje(hilo_personaje_t *hPersonaje) {
 		return hPersonaje->hilo == hiloPersonaje->hilo;
 	}
 
-	log_info(logFile, "Sacando personaje: %c del nivel: %s", hiloPersonaje->simbolo, hiloPersonaje->nivel);
+	log_info(logFile, "Sacando personaje: %c del nivel: %s",
+			hiloPersonaje->simbolo, hiloPersonaje->nivel);
 	list_remove_by_condition(hilos, (void *) _is_personaje);
 //	dataHiloDestroy(personaje); TODO: Ver por que rompe si quiero volver a lanzar el hilo
 
 }
-
 
 //-----------------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------   HILO PERSONAJE   -----------------------------------------------------------
@@ -319,21 +329,20 @@ void hiloPersonaje(hilo_personaje_t *datos) {
 	return;
 }
 
-
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void crearClientePlanificador(hilo_personaje_t* datos){
+void crearClientePlanificador(hilo_personaje_t* datos) {
 
-	do{
-		datos->sockfdPlanificador = sockets_createClient(datos->ipOrquestador, datos->puertoOrquestador);
-		if (datos->sockfdPlanificador < 0){
+	do {
+		datos->sockfdPlanificador = sockets_createClient(datos->ipOrquestador,
+				datos->puertoOrquestador);
+		if (datos->sockfdPlanificador < 0) {
 			sleep(1);
 		}
-	}while(datos->sockfdPlanificador < 0);
+	} while (datos->sockfdPlanificador < 0);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
-
 
 int atenderOrquestador(hilo_personaje_t *datos) {
 	header_t header;
@@ -359,7 +368,7 @@ int atenderOrquestador(hilo_personaje_t *datos) {
 	case NOTIFICAR_MUERTE:
 		nbytes = hiloRutinaMuerte(datos, "por Enemigo");
 		break;
-	case NOTIFICAR_REINICIO_PLAN://Deprecated
+	case NOTIFICAR_REINICIO_PLAN: //Deprecated
 		log_info(logFile, "Algun hilo perdio todas las vidas");
 		break;
 	default:
@@ -501,6 +510,7 @@ void rutinaReinicioNivel(hilo_personaje_t *datos) {
 	log_info(logFile, "Reinicio de nivel");
 	reiniciarDatosNivel(datos);
 	close(datos->sockfdPlanificador);
+	sleep(1);
 	datos->sockfdPlanificador = sockets_createClient(datos->ipOrquestador,
 			datos->puertoOrquestador);
 	enviarHandshakePersonaje(datos->sockfdPlanificador);
@@ -517,8 +527,6 @@ int enviarSolicitudObjetivo(hilo_personaje_t *datos) {
 	return sockets_send(datos->sockfdPlanificador, &header,
 			datos->objetivos[datos->objetivoActual]);
 }
-
-
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -545,7 +553,7 @@ void enviarHandshakePersonaje(int sockfd) {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void enviarFinNivel(hilo_personaje_t *datos){
+void enviarFinNivel(hilo_personaje_t *datos) {
 
 	header_t header;
 	header.type = FINALIZAR_NIVEL;
@@ -556,15 +564,14 @@ void enviarFinNivel(hilo_personaje_t *datos){
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-
 void reiniciarDatosNivel(hilo_personaje_t *datos) {
 	datos->objetivoActual = 0;
 	if (datos->coordPosicion == NULL ) {
 		datos->coordPosicion = malloc(sizeof(coordenada_t));
 	}
-	
+
 	modificarCoordenada(datos->coordPosicion, 0, 0);
-	
+
 	if (datos->coordObjetivo != NULL ) {
 		free(datos->coordObjetivo);
 		datos->coordObjetivo = NULL;
@@ -580,8 +587,4 @@ void rutinaFinalizarNivel(hilo_personaje_t *datos) {
 	datos->estadoPersonaje = FIN_NIVEL;
 
 }
-
-
-
-
 
