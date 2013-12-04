@@ -174,7 +174,7 @@ void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 		//datosPlanificador->mutexColas TODO:Implementar mutex
 	} else {
 		agregarPersonajeAEspera(nombreNivel, datosPersonaje);
-		log_info(logFile, "Nivel pedido por %c no conectado todavia.",
+		log_info(logFile, "%s pedido por %c no conectado todavia.", nombreNivel,
 				datosPersonaje->simbolo);
 	}
 }
