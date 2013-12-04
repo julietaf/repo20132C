@@ -54,14 +54,14 @@ int main(void) {
 			}
 		}
 
-		if (nbytes == 0){
+		if (nbytes <= 0){
 			log_error(logFile, "Finalizacion por que se perdio la conexion con plataforma");
 			break;
 		}
 	}
 
 
-	int nivel_gui_terminar();
+	nivel_gui_terminar();
 	return EXIT_SUCCESS;
 }
 
@@ -284,6 +284,7 @@ void recibirDatosPlanificador() {
 
 int atenderMensajePlanificador(int sockfd) {
 	header_t h;
+	t_list* asignados;
 	int nbytes = validarRecive(sockfd, &h);
 	if (nbytes) {
 		char* data = malloc(h.length);
@@ -310,7 +311,10 @@ int atenderMensajePlanificador(int sockfd) {
 			break;
 		case NOTIFICACION_RECURSOS_ASIGNADOS:
 //			nbytes = recv(sockfd, data, h.length, MSG_WAITALL);
-			esperarRecursosAsignados(h);
+			asignados = esperarRecursosAsignados(h);
+			actualizarEstado(asignados);
+			list_destroy(asignados);
+			dibujar();
 			break;
 		default:
 			log_error(logFile,
@@ -922,12 +926,17 @@ int validarPosicionEnemigo(coordenada_t* posicion) {
 
 void deadLock() {
 
-	int usegundos = (configObj->deadlockTime * 1000000);
-	int wait = div(usegundos, 1000000000).quot;// para sleep
-	log_info(logFile, "DeadLock se ejecutara cada: %d segundos", wait);
+//	int usegundos = (configObj->deadlockTime * 1000000);
+//	int wait = div(usegundos, 1000000000).quot;// para sleep
+
+	int usegundos = (configObj->deadlockTime * 1000);
+	int wait  = div(usegundos, 1000000).quot;// para sleep
+	int uwait = div(usegundos, 1000000).rem;// para usleep
+	log_info(logFile, "DeadLock se ejecutara cada: %d segundos, %d milisegundos", wait, uwait);
 
 	while (1) {
 		sleep(wait);
+		usleep(uwait);
 		log_info(logFile, "Ejecutando DeadLock");
 		gestionarDeadLock();
 
@@ -962,6 +971,7 @@ void gestionarDeadLock() {
 		}
 	}
 
+	log_info(logFile, "Victima DeadLock: %c", menor->id);
 	notificarMuertePersonaje(menor->id, VICTIMA_DEADLOCK);
 	list_destroy_and_destroy_elements(bloqueados, (void *)free);
 }
@@ -978,7 +988,8 @@ void logBloqueados(t_list* bloqueados){
 	for (i = 0; i < bloqueados->elements_count; i++){
 		temp = list_get(bloqueados, i);
 		string_append(&s, "-");
-		string_append(&s, &temp->id);
+		string_append(&s, string_repeat(temp->id, 1));
+
 
 	}
 
