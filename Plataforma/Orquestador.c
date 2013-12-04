@@ -11,7 +11,7 @@
 void orquestador(void) {
 	configuracion = getConfiguracion();
 	remove(LOG_PATH);
-	logFile = log_create(LOG_PATH, "Orquestador", false,
+	logFile = log_create(LOG_PATH, "Plataforma", false,
 			configuracion->detalleLog);
 	int escuchasfd = sockets_createServer(configuracion->direccionIp,
 			configuracion->puerto, configuracion->backlog);
@@ -127,7 +127,7 @@ void chequearUltimoPersonaje(void) {
 
 int tienePersonajesActivos(datos_planificador_t *unPlanificador) {
 	int personajesActivos = 1;
-//TODO: aplicar mutexes.
+
 	pthread_mutex_lock(unPlanificador->mutexColas);
 	if (queue_is_empty(
 			unPlanificador->personajesListos) && queue_is_empty(unPlanificador->personajesBloqueados)
@@ -162,16 +162,16 @@ void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 
 	if (datosPlanificador != NULL ) {
 		notificarNivel(datosPlanificador->sockfdNivel, datosPersonaje->simbolo);
-		//datosPlanificador->mutexColas TODO:Implementar mutex
 		FD_SET(datosPersonaje->sockfd, datosPlanificador->bagMaster);
+
 		if (datosPersonaje->sockfd > datosPlanificador->sockfdMax)
 			datosPlanificador->sockfdMax = datosPersonaje->sockfd;
+
 		log_info(logFile, "Personaje %c delegado a %s", datosPersonaje->simbolo,
 				datosPlanificador->nombre);
 		pthread_mutex_lock(datosPlanificador->mutexColas);
 		queue_push(datosPlanificador->personajesListos, datosPersonaje);
 		pthread_mutex_unlock(datosPlanificador->mutexColas);
-		//datosPlanificador->mutexColas TODO:Implementar mutex
 	} else {
 		agregarPersonajeAEspera(nombreNivel, datosPersonaje);
 		log_info(logFile, "%s pedido por %c no conectado todavia.", nombreNivel,
@@ -222,7 +222,7 @@ void crearNuevoHiloPlanificador(int sockfd) {
 		datos_planificador_t *datosPlanificador = crearDatosPlanificador(
 				infoPlanificacion, sockfd);
 		informacionPlanificacion_destroy(infoPlanificacion);
-//		log_info(logFile, "Nivel %s conectado.", datosPlanificador->nombre);
+		log_info(logFile, "%s conectado.", datosPlanificador->nombre);
 		pthread_create(datosPlanificador->hilo, NULL, (void *) planificador,
 				(void *) datosPlanificador);
 		list_add(listaPlanificadores, datosPlanificador);
@@ -241,16 +241,14 @@ void informarPersonajesEspera(datos_planificador_t *datosPlanificador) {
 			(void *) _is_personaje)) != NULL ) {
 		notificarNivel(datosPlanificador->sockfdNivel,
 				perEspera->personaje->simbolo);
-		//datosPlanificador->mutexColas TODO:Implementar mutex
 		FD_SET(perEspera->personaje->sockfd, datosPlanificador->bagMaster);
 		if (perEspera->personaje->sockfd > datosPlanificador->sockfdMax)
 			datosPlanificador->sockfdMax = perEspera->personaje->sockfd;
 		pthread_mutex_lock(datosPlanificador->mutexColas);
 		queue_push(datosPlanificador->personajesListos, perEspera->personaje);
 		pthread_mutex_unlock(datosPlanificador->mutexColas);
-		//datosPlanificador->mutexColas TODO:Implementar mutex
-//		log_info(logFile, "Personaje %c salio de espera.",
-//				perEspera->personaje->simbolo);
+		log_info(logFile, "Personaje %c salio de espera.",
+				perEspera->personaje->simbolo);
 		personajeEspera_destroy(perEspera);
 	}
 }

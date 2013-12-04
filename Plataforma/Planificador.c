@@ -64,8 +64,9 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 		enviarPersonajeFinalizo(datosPlan, unPersonaje->simbolo);
 		FD_CLR(sockfdPersonaje, datosPlan->bagMaster);
 		close(sockfdPersonaje);
-		log_error(logFile, "Personaje %c cerro la conexion inesperadamente.",
-				unPersonaje->simbolo);
+		log_error(logFile,
+				"Personaje %c cerro la conexion inesperadamente con %s.",
+				unPersonaje->simbolo, datosPlan->nombre);
 		datosPersonaje_destroy(unPersonaje);
 	}
 
