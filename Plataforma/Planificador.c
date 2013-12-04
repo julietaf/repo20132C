@@ -133,7 +133,6 @@ void self_destroy(char *nombre) {
 
 	pthread_mutex_destroy(self->mutexColas);
 	free(self->mutexColas);
-	pthread_detach(*self->hilo);
 	free(self);
 	pthread_exit((void *) NULL );
 }
@@ -169,15 +168,12 @@ int removerPersonaje(header_t *header, datos_planificador_t *datosPlan,
 
 int gestionarDesbloqueoPersonajes(header_t *header,
 		datos_planificador_t *datosPlan) {
-	int nbytes;
-	char *data;
+	int nbytes = 0;
 
 	if (header->length == 0) {
-		header_t header;
-		header.type = NOTIFICACION_RECURSOS_ASIGNADOS;
-		nbytes = sockets_send(datosPlan->sockfdNivel, &header, '\0');
+		nbytes = informarRecursosUsados(NULL, datosPlan);
 	} else {
-		data = malloc(header->length);
+		char *data = malloc(header->length);
 		nbytes = recv(datosPlan->sockfdNivel, data, header->length,
 				MSG_WAITALL);
 		t_list *recursosLiberados = listaRecursos_deserializer(data,
@@ -547,9 +543,17 @@ int gestionarUbicacionCaja(datos_planificador_t *datosPlan, header_t *header) {
 int informarRecursosUsados(t_list *recursosUsados, datos_planificador_t *datos) {
 	header_t header;
 	header.type = NOTIFICACION_RECURSOS_ASIGNADOS;
-	char *serialized = listaRecursos_serializer(recursosUsados, &header.length);
-	int nbytes = sockets_send(datos->sockfdNivel, &header, serialized);
-	free(serialized);
+	int nbytes = 0;
+
+	if (recursosUsados == NULL ) {
+		header.length = 0;
+		nbytes = sockets_send(datos->sockfdNivel, &header, '\0');
+	} else {
+		char *serialized = listaRecursos_serializer(recursosUsados,
+				&header.length);
+		nbytes = sockets_send(datos->sockfdNivel, &header, serialized);
+		free(serialized);
+	}
 
 	return nbytes;
 }
