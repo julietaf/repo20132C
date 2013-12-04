@@ -247,8 +247,8 @@ void informarPersonajesEspera(datos_planificador_t *datosPlanificador) {
 		pthread_mutex_lock(datosPlanificador->mutexColas);
 		queue_push(datosPlanificador->personajesListos, perEspera->personaje);
 		pthread_mutex_unlock(datosPlanificador->mutexColas);
-		log_info(logFile, "Personaje %c salio de espera.",
-				perEspera->personaje->simbolo);
+		log_info(logFile, "Personaje %c salio de espera. Delegado a %s.",
+				perEspera->personaje->simbolo, perEspera->nombreNivel);
 		personajeEspera_destroy(perEspera);
 	}
 }
