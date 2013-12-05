@@ -531,13 +531,19 @@ int gestionarUbicacionCaja(datos_planificador_t *datosPlan, header_t *header) {
 			MSG_WAITALL);
 	datos_personaje_t *unPersonaje = buscarPersonajePorSimbolo(datosPlan,
 			respuesta[0]);
-	unPersonaje->coordObjetivo = coordenadas_deserializer(
-			respuesta + sizeof(char));
-	header->length = header->length - sizeof(char);
-	nbytes = sockets_send(unPersonaje->sockfd, header,
-			respuesta + sizeof(char));
-	free(respuesta);
 
+	if (unPersonaje == NULL ) {
+		log_warning(logFile,
+				"Personaje no encontrado. type=%d length=%d idPersonaje=%c. %s (ubicacion caja).",
+				header->type, header->length, respuesta[0], datosPlan->nombre);
+	} else {
+		unPersonaje->coordObjetivo = coordenadas_deserializer(
+				respuesta + sizeof(char));
+		header->length = header->length - sizeof(char);
+		nbytes = sockets_send(unPersonaje->sockfd, header,
+				respuesta + sizeof(char));
+		free(respuesta);
+	}
 	return nbytes;
 }
 
