@@ -148,12 +148,12 @@ int removerPersonaje(header_t *header, datos_planificador_t *datosPlan,
 	t_list *recursosLiberados = listaRecursos_deserializer(data + sizeof(char),
 			header->length - sizeof(char));
 	free(data);
+	datos_personaje_t *personajeMuerto = removerPersonajePorSimbolo(datosPlan,
+			idPersonaje);
 	t_list *recursosUsados = desbloquearPersonajes(recursosLiberados,
 			datosPlan);
 	nbytes = informarRecursosUsados(recursosUsados, datosPlan);
 	list_destroy_and_destroy_elements(recursosUsados, (void *) free);
-	datos_personaje_t *personajeMuerto = removerPersonajePorSimbolo(datosPlan,
-			idPersonaje);
 
 	if (personajeMuerto != NULL ) {
 		nbytes = notificarMuertePersonaje(personajeMuerto, datosPlan);
