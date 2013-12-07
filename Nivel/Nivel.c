@@ -488,6 +488,7 @@ void notificarMuertePersonaje(char id, int causa) {
 	h.length = sizeof(char);
 
 	adquiridos = getObjetosAdquiridosSerializable(listaPersonajes, id);
+
 	matarPersonaje(listaPersonajes, listaRecursos, id);
 	char* adqData = listaRecursos_serializer(adquiridos, &length);
 	char* data = malloc(h.length + length);
@@ -668,6 +669,7 @@ void actualizarEstado(t_list* asignados) {
 	int i;
 	for (i = 0; i < asignados->elements_count; ++i) {
 		personaje = list_get(asignados, i);
+		log_debug(logFile, "Plataforma le dio el recurso: %c al personaje %c", personaje->idRecurso, personaje->idPersonaje);
 		darRecursoPersonaje(listaPersonajes, listaRecursos,
 				personaje->idPersonaje, personaje->idRecurso);
 	}

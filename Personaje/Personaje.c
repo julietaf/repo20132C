@@ -473,7 +473,7 @@ void recibirRecurso(hilo_personaje_t *datos) {
 	datos->objetivoActual++;
 
 	if (datos->objetivos[datos->objetivoActual] == NULL ) {
-		log_info(logFile, "Ultimo recurso otorgado");
+		log_info(logFile, "Ultimo recurso otorgado del Nivel: %s", datos->nivel);
 		rutinaFinalizarNivel(datos);
 	}
 }
