@@ -13,6 +13,7 @@ void planificador(datos_planificador_t *datos) {
 	FD_SET(datos->sockfdNivel, datos->bagMaster);
 	int retval;
 	datos->sockfdMax = datos->sockfdNivel;
+	log_info(logFile, "Planificador %s iniciado.", datos->nombre);
 
 	while (1) {
 		retval = llamadaSelect(datos, &bagEscucha);
@@ -337,6 +338,8 @@ int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
 	personajeRecurso->idRecurso = data[0];
 	char *serialized = personajeRecurso_serializer(personajeRecurso,
 			&header->length);
+	log_info(logFile, "Personaje %c solicito recurso %c.",
+			personajeRecurso->idPersonaje, personajeRecurso->idRecurso);
 	sockets_send(datosPlan->sockfdNivel, header, serialized);
 	free(serialized);
 	free(personajeRecurso);
