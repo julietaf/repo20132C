@@ -103,7 +103,7 @@ void logguearFinPlan(header_t *header, int sockfd) {
 
 void chequearUltimoPersonaje(void) {
 	int i, hayPersonajesActivos = 1;
-	char c;
+	char respuesta = '\0';
 	datos_planificador_t *unPlanificador;
 
 	for (i = 0; i < list_size(listaPlanificadores); i++) {
@@ -115,14 +115,25 @@ void chequearUltimoPersonaje(void) {
 	}
 
 	if (!hayPersonajesActivos) {
-		printf("Desea enfrentar a Koopa? y/n\n");
+		do {
+			printf("Desea enfrentar a Koopa? s/n\n");
+			scanf(" %c", &respuesta);
+		} while (!respuestaValida(respuesta));
 
-		if ((c = getchar()) == 'y') {
+		if (respuesta == 's' || respuesta == 'S') {
 			printf("Aqui se llamaria a koopa.\n");
 //			char *sols[] = { "koopa", configObj->solicitudesKoopa, (char *) 0 };
 //			execv(configObj->binarioKoopa, sols);
+		} else {
+			printf("Hasta la vista, baby.\n");
+			exit(0);
 		}
 	}
+}
+
+int respuestaValida(char respuesta) {
+	return (respuesta == 's' || respuesta == 'n' || respuesta == 'S'
+			|| respuesta == 'N');
 }
 
 int tienePersonajesActivos(datos_planificador_t *unPlanificador) {
