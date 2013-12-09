@@ -196,12 +196,12 @@ int mostrarContinue() {
 	while (r != 'S' && r != 's' && r != 'N' && r != 'n') {
 
 		printf("El personaje ha perdido todas sus vidas, desea continuar? \n");
-		printf("S/N ");
-		scanf("%c", &r);
+		printf("S/N \n");
+		scanf(" %c", &r);
 
 		if (r == 'S' || r == 's') {
 			contItentos++;
-			printf("Intentos: %d", contItentos);
+			printf("Intentos: %d\n", contItentos);
 			return 1;
 		} else if (r == 'N' || r == 'n') {
 			return 0;
