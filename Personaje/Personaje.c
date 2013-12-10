@@ -529,7 +529,7 @@ int hiloRutinaMuerte(hilo_personaje_t *datos, char* causa) {
 
 void rutinaReinicioNivel(hilo_personaje_t *datos) {
 	//TODO: Esto Anda?
-	log_info(logFile, "Reinicio de nivel: %s", datos);
+	log_info(logFile, "Reinicio de nivel: %s", datos->nivel);
 	reiniciarDatosNivel(datos);
 	close(datos->sockfdPlanificador);
 	sleep(1);
