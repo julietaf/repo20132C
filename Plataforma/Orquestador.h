@@ -57,9 +57,14 @@ typedef struct {
 	datos_personaje_t *personaje;
 } personaje_espera_t;
 
+typedef struct {
+	char simbolo;
+	int finalizoPlan;
+} estado_personaje_t;
+
 configuracion_plataforma_t *configuracion;
 t_log *logFile;
-t_list *listaPlanificadores, *listaEspera;
+t_list *listaPlanificadores, *listaEspera, *globalPersonajes;
 
 void orquestador(void);
 void agregarPersonajeAEspera(char *nombreNivel, datos_personaje_t *personaje);
@@ -86,5 +91,9 @@ void atenderNuevoPersonaje(int sockfd);
 datos_planificador_t *buscarPlanificador(char *nombre);
 void logguearFinPlan(header_t *header, int sockfd);
 datos_planificador_t *removerPlanificador(char *nombre);
+int respuestaValida(char respuesta);
+estado_personaje_t *buscarEstadoPersonaje(char simbolo);
+estado_personaje_t *agregarPersonajeAGlobal(char simbolo);
+estado_personaje_t *buscarNoFinalizado(void);
 
 #endif /* ORQUESTADOR_H_ */

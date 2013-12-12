@@ -32,7 +32,8 @@ int main(void) {
 				i++) {
 
 			dataHilo = crearDatosPersonaje(i);
-			log_debug(logFile, "Creando hilo personaje para nivel: %s", dataHilo->nivel);
+			log_info(logFile, "Creando hilo personaje para nivel: %s",
+					dataHilo->nivel);
 			pthread_create(&dataHilo->hilo, NULL, (void *) hiloPersonaje,
 					(void *) dataHilo);
 			list_add(hilos, dataHilo);
@@ -51,7 +52,7 @@ int main(void) {
 
 	enviarSuccessPersonaje();
 
-	log_debug(logFile, "Termino \n");
+	log_info(logFile, "Termino \n");
 	return EXIT_SUCCESS;
 }
 
@@ -59,16 +60,14 @@ int main(void) {
 
 hilo_personaje_t *crearDatosPersonaje(int index) {
 
-	log_debug(logFile, "Creando datos personaje");
-
-
+	log_info(logFile, "Creando datos personaje");
 
 	hilo_personaje_t *dataHilo = malloc(sizeof(hilo_personaje_t));
 
-
 	dataHilo->ipOrquestador = config->ipOrquestador;
 	dataHilo->puertoOrquestador = config->puertoOrquestador;
-	dataHilo->nivel = string_duplicate(config_get_array_value(configFile, "planDeNiveles")[index]);
+	dataHilo->nivel = string_duplicate(
+			config_get_array_value(configFile, "planDeNiveles")[index]);
 	string_trim(&dataHilo->nivel);
 //	dataHilo->nivel = malloc( strlen(config_get_array_value(configFile, "planDeNiveles")[index]) + 1);
 //	strcpy(dataHilo->nivel, config_get_array_value(configFile, "planDeNiveles")[index]);
@@ -78,7 +77,6 @@ hilo_personaje_t *crearDatosPersonaje(int index) {
 	dataHilo->simbolo = *config_get_string_value(configFile, "simbolo");
 
 	free(key);
-
 
 	return dataHilo;
 }
@@ -108,6 +106,8 @@ void getConfiguracion(void) {
 	char *orqaddr = strdup(config_get_string_value(configFile, "orquestador"));
 	config->ipOrquestador = strtok(orqaddr, tok);
 	config->puertoOrquestador = strtok(NULL, tok);
+	config->detalleLog = log_level_from_string(
+			config_get_string_value(configFile, "detalleLog"));
 }
 
 void rutinaReinicioPlan() {
@@ -153,12 +153,11 @@ void signalRutinaVidas() {
 
 void signalRutinaMuerte() {
 
-	if (vidasPlan <= 0){
+	if (vidasPlan <= 0) {
 		return;
 	}
 	int hayVidas = rutinaMuerte();
-	printf("El personaje perdio una vida por señal, Vidas: %d \n",
-			vidasPlan);
+	printf("El personaje perdio una vida por señal, Vidas: %d \n", vidasPlan);
 	log_info(logFile, "El personaje perdio una vida por señal, Vidas: %d",
 			vidasPlan);
 
@@ -196,12 +195,12 @@ int mostrarContinue() {
 	while (r != 'S' && r != 's' && r != 'N' && r != 'n') {
 
 		printf("El personaje ha perdido todas sus vidas, desea continuar? \n");
-		printf("S/N ");
-		scanf("%c", &r);
+		printf("S/N \n");
+		scanf(" %c", &r);
 
 		if (r == 'S' || r == 's') {
 			contItentos++;
-			printf("Intentos: %d", contItentos);
+			printf("Intentos: %d\n", contItentos);
 			return 1;
 		} else if (r == 'N' || r == 'n') {
 			return 0;
@@ -229,7 +228,7 @@ void enviarSuccessPersonaje() {
 
 void inicializarLog() {
 	remove(LOG_PATH);
-	logFile = log_create(LOG_PATH, config->nombre, false, LOG_LEVEL_DEBUG);
+	logFile = log_create(LOG_PATH, config->nombre, false, config->detalleLog);
 	log_info(logFile,
 			"----------------------------- %s --------------------------------",
 			config->nombre);
@@ -277,7 +276,7 @@ int gestionarFinNivel(char id) {
 int gestionarFinHilo() {
 	int ret;
 
-	log_debug(logFile, "Semaforo main habilito, joineando hilos");
+	log_info(logFile, "Semaforo main habilito, joineando hilos");
 	if (estado->motivo == FIN_REINICIO_PLAN) { //Reinicia el plan
 		matarHilos();
 		ret = mostrarContinue() ? REINICIAR : FINALIZAR;
@@ -397,7 +396,8 @@ int atenderOrquestador(hilo_personaje_t *datos) {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 int enviarDatosPersonaje(hilo_personaje_t *datos) {
-	log_info(logFile, "Enviando datos de personaje para el nivel: %s", datos->nivel);
+	log_info(logFile, "Enviando datos de personaje para el nivel: %s",
+			datos->nivel);
 	header_t header;
 	header.type = NOTIFICAR_DATOS_PERSONAJE;
 	notificacion_datos_personaje_t *notificacion = malloc(
@@ -420,7 +420,9 @@ int realizarMovimiento(hilo_personaje_t *datos) {
 	int nbytes = 0;
 
 	if (datos->coordObjetivo == NULL ) { //No hay coordenadas del objetivo
-		log_debug(logFile, "Solicitando coordenadas del objetivo: %s en el nivel: %s", datos->objetivos[datos->objetivoActual], datos->nivel);
+		log_info(logFile,
+				"Solicitando coordenadas del objetivo: %s en el nivel: %s",
+				datos->objetivos[datos->objetivoActual], datos->nivel);
 		nbytes = solicitarCoordenadasObjetivo(datos->sockfdPlanificador,
 				datos->objetivos[datos->objetivoActual]);
 	} else if (obtenerDistancia(datos->coordPosicion, datos->coordObjetivo)) { //el personaje debe moverse en busca del objetivo
@@ -473,7 +475,8 @@ void recibirRecurso(hilo_personaje_t *datos) {
 	datos->objetivoActual++;
 
 	if (datos->objetivos[datos->objetivoActual] == NULL ) {
-		log_info(logFile, "Ultimo recurso otorgado del Nivel: %s", datos->nivel);
+		log_info(logFile, "Ultimo recurso otorgado del Nivel: %s",
+				datos->nivel);
 		rutinaFinalizarNivel(datos);
 	}
 }
@@ -529,7 +532,7 @@ int hiloRutinaMuerte(hilo_personaje_t *datos, char* causa) {
 
 void rutinaReinicioNivel(hilo_personaje_t *datos) {
 	//TODO: Esto Anda?
-	log_info(logFile, "Reinicio de nivel: %s", datos);
+	log_info(logFile, "Reinicio de nivel: %s", datos->nivel);
 	reiniciarDatosNivel(datos);
 	close(datos->sockfdPlanificador);
 	sleep(1);
@@ -542,14 +545,14 @@ void rutinaReinicioNivel(hilo_personaje_t *datos) {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 int enviarSolicitudObjetivo(hilo_personaje_t *datos) {
-	char* obj= datos->objetivos[datos->objetivoActual];
-	log_debug(logFile, "Solicitando recurso: %s, del nivel: %s", obj, datos->nivel);
+	char* obj = datos->objetivos[datos->objetivoActual];
+	log_info(logFile, "Solicitando recurso: %s, del nivel: %s", obj,
+			datos->nivel);
 	header_t header;
 	header.type = SOLICITAR_RECURSO;
 	header.length = sizeof(char);
 
-	return sockets_send(datos->sockfdPlanificador, &header,
-			obj);
+	return sockets_send(datos->sockfdPlanificador, &header, obj);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------

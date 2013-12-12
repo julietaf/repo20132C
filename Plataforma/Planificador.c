@@ -13,6 +13,7 @@ void planificador(datos_planificador_t *datos) {
 	FD_SET(datos->sockfdNivel, datos->bagMaster);
 	int retval;
 	datos->sockfdMax = datos->sockfdNivel;
+	log_info(logFile, "Planificador %s iniciado.", datos->nombre);
 
 	while (1) {
 		retval = llamadaSelect(datos, &bagEscucha);
@@ -337,6 +338,8 @@ int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
 	personajeRecurso->idRecurso = data[0];
 	char *serialized = personajeRecurso_serializer(personajeRecurso,
 			&header->length);
+	log_info(logFile, "Personaje %c solicito recurso %c.",
+			personajeRecurso->idPersonaje, personajeRecurso->idRecurso);
 	sockets_send(datosPlan->sockfdNivel, header, serialized);
 	free(serialized);
 	free(personajeRecurso);
@@ -402,9 +405,14 @@ int reenviarUbicacionCaja(datos_planificador_t *datosPlan, int sockfdPersonaje,
 	datos_personaje_t *unPersonaje = buscarPersonajePorSockfd(datosPlan,
 			sockfdPersonaje);
 	unPersonaje->objetivo = data[0];
-	sockets_send(datosPlan->sockfdNivel, header, data);
+	char *dataSend = malloc(2 * sizeof(char));
+	memcpy(dataSend, data, sizeof(char));
+	memcpy(dataSend + sizeof(char), &unPersonaje->simbolo, sizeof(char));
+	header->length = 2 * sizeof(char);
+	sockets_send(datosPlan->sockfdNivel, header, dataSend);
 	log_info(logFile, "Personaje %c con nuevo objetivo: %c",
 			unPersonaje->simbolo, unPersonaje->objetivo);
+	free(dataSend);
 	free(data);
 
 	return esperarUbicacionCaja(datosPlan, unPersonaje);
@@ -542,8 +550,10 @@ int gestionarUbicacionCaja(datos_planificador_t *datosPlan, header_t *header) {
 		header->length = header->length - sizeof(char);
 		nbytes = sockets_send(unPersonaje->sockfd, header,
 				respuesta + sizeof(char));
-		free(respuesta);
 	}
+
+	free(respuesta);
+
 	return nbytes;
 }
 

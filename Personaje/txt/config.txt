@@ -8,6 +8,7 @@ obj[Nivel8]=[D,C]
 vidas=5
 #orquestador=192.168.1.36:5000
 orquestador=127.0.0.1:5000
+detalleLog=TRACE
 
 ######################################################LUIGI###############################################
 #nombre=Luigi
@@ -19,6 +20,7 @@ orquestador=127.0.0.1:5000
 #vidas=5
 #orquestador=192.168.1.36:5000
 #orquestador=127.0.0.1:5000
+#detalleLog=TRACE
 
 ######################################################KOOPA###############################################
 #nombre=Koopa
@@ -31,3 +33,4 @@ orquestador=127.0.0.1:5000
 #vidas=10
 #orquestador=192.168.1.36:5000
 #orquestador=127.0.0.1:5000
+#detalleLog=TRACE

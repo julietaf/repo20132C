@@ -18,6 +18,7 @@ void orquestador(void) {
 	int sockfdMax = escuchasfd;
 	listaPlanificadores = list_create();
 	listaEspera = list_create();
+	globalPersonajes = list_create();
 	int sockfd, nbytes;
 	fd_set bagMaster, bagTemp;
 	FD_ZERO(&bagMaster);
@@ -78,9 +79,23 @@ void delegarAlPlanificador(header_t *header, int sockfd) {
 			notificacionDatosPersonaje_deserializer(datos);
 	datos_personaje_t *datosPersonaje = crearDatosPersonaje(
 			notificacion->simbolo, sockfd);
+	agregarPersonajeAGlobal(notificacion->simbolo);
 	agregarPersonajeAListos(datosPersonaje, notificacion->nombreNivel);
 	free(datos);
 	notificacionDatosPersonaje_destroy(notificacion);
+}
+
+estado_personaje_t *agregarPersonajeAGlobal(char simbolo) {
+	estado_personaje_t *estadoPersonaje = buscarEstadoPersonaje(simbolo);
+
+	if (estadoPersonaje == NULL ) {
+		estadoPersonaje = malloc(sizeof(estado_personaje_t));
+		estadoPersonaje->simbolo = simbolo;
+		estadoPersonaje->finalizoPlan = 0;
+		list_add(globalPersonajes, estadoPersonaje);
+	}
+
+	return estadoPersonaje;
 }
 
 void atenderNuevoPersonaje(int sockfd) {
@@ -97,32 +112,53 @@ void atenderNuevoPersonaje(int sockfd) {
 void logguearFinPlan(header_t *header, int sockfd) {
 	char *data = malloc(header->length);
 	recv(sockfd, data, header->length, MSG_WAITALL);
+	estado_personaje_t *estado = buscarEstadoPersonaje(data[0]);
+	estado->finalizoPlan = 1;
 	log_info(logFile, "Personaje %c finalizo plan de niveles.", data[0]);
 	free(data);
 }
 
 void chequearUltimoPersonaje(void) {
-	int i, hayPersonajesActivos = 1;
-	char c;
-	datos_planificador_t *unPlanificador;
+	char respuesta = '\0';
+	estado_personaje_t *estado = buscarNoFinalizado();
 
-	for (i = 0; i < list_size(listaPlanificadores); i++) {
-		unPlanificador = list_get(listaPlanificadores, i);
-		hayPersonajesActivos = tienePersonajesActivos(unPlanificador);
+	if (estado == NULL ) {
+		do {
+			printf("Desea enfrentar a Koopa? s/n\n");
+			scanf(" %c", &respuesta);
+		} while (!respuestaValida(respuesta));
 
-		if (hayPersonajesActivos)
-			break;
-	}
-
-	if (!hayPersonajesActivos) {
-		printf("Desea enfrentar a Koopa? y/n\n");
-
-		if ((c = getchar()) == 'y') {
+		if (respuesta == 's' || respuesta == 'S') {
 			printf("Aqui se llamaria a koopa.\n");
 //			char *sols[] = { "koopa", configObj->solicitudesKoopa, (char *) 0 };
 //			execv(configObj->binarioKoopa, sols);
+		} else {
+			printf("Hasta la vista, baby.\n");
+			exit(0);
 		}
+	} else
+		log_info(logFile, "Falta finalizar %c.", estado->simbolo);
+}
+
+estado_personaje_t *buscarNoFinalizado(void) {
+	int _is_estado_nofinalizado(estado_personaje_t *estado) {
+		return estado->finalizoPlan == 0;
 	}
+
+	return list_find(globalPersonajes, (void *) _is_estado_nofinalizado);
+}
+
+estado_personaje_t *buscarEstadoPersonaje(char unSimbolo) {
+	int _is_personaje(estado_personaje_t *estado) {
+		return estado->simbolo == unSimbolo;
+	}
+
+	return list_find(globalPersonajes, (void *) _is_personaje);
+}
+
+int respuestaValida(char respuesta) {
+	return (respuesta == 's' || respuesta == 'n' || respuesta == 'S'
+			|| respuesta == 'N');
 }
 
 int tienePersonajesActivos(datos_planificador_t *unPlanificador) {
