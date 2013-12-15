@@ -57,6 +57,10 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 	case NOTIFICAR_REINICIO_PLAN:
 		atenderReinicioPlan(datosPlan, sockfdPersonaje);
 		break;
+	default:
+		log_warning(logFile,
+				"Mensaje inesperado. type=%d length=%d. (atender pedido personaje).",
+				header.type, header.length);
 	}
 
 	if (nbytes == 0) {
@@ -96,6 +100,10 @@ int atenderPedidoNivel(datos_planificador_t *datosPlan) {
 	case NOTIFICACION_RECURSOS_LIBERADOS:
 		gestionarDesbloqueoPersonajes(&header, datosPlan);
 		break;
+	default:
+		log_warning(logFile,
+				"Mensaje inesperado. type=%d length=%d. (atender pedido nivel).",
+				header.type, header.length);
 	}
 
 	if (nbytes == 0) {
@@ -156,7 +164,9 @@ int removerPersonaje(header_t *header, datos_planificador_t *datosPlan,
 	nbytes = informarRecursosUsados(recursosUsados, datosPlan);
 	list_destroy_and_destroy_elements(recursosUsados, (void *) free);
 
-	if (personajeMuerto != NULL ) {
+	if (personajeMuerto == NULL )
+		log_warning(logFile, "Personaje %c muerto no encontrado.", idPersonaje);
+	else {
 		nbytes = notificarMuertePersonaje(personajeMuerto, datosPlan);
 		log_info(logFile, "Personaje %c muerto por %s.",
 				personajeMuerto->simbolo, motivo);
@@ -351,7 +361,7 @@ int reenviarSolicitudRecurso(datos_planificador_t *datosPlan,
 int esperarSolicitudRecurso(datos_planificador_t *datosPlan,
 		datos_personaje_t *personaje) {
 	header_t header;
-	int nbytes, algoritmoActualizado = 0;
+	int nbytes, desincronizacion = 0;
 
 	if (personaje == NULL )
 		personaje = datosPlan->personajeEnMovimiento;
@@ -384,12 +394,22 @@ int esperarSolicitudRecurso(datos_planificador_t *datosPlan,
 		break;
 	case NOTIFICAR_ALGORITMO_PLANIFICACION:
 		actualizarAlgoritmo(&header, datosPlan);
-		algoritmoActualizado = 1;
+		desincronizacion = 1;
 		esperarSolicitudRecurso(datosPlan, personaje);
+		break;
+	case VICTIMA_ENEMIGO:
+		removerPersonaje(&header, datosPlan, "enemigo");
+		desincronizacion = 1;
+		esperarSolicitudRecurso(datosPlan, personaje);
+		break;
+	default:
+		log_warning(logFile,
+				"Mensaje inesperado. type=%d length=%d.(esperando solicitud recurso)",
+				header.type, header.length);
 		break;
 	}
 
-	if (!algoritmoActualizado) {
+	if (!desincronizacion) {
 		nbytes = informarSolicitudRecurso(personaje, header.type);
 		datosPlan->personajeEnMovimiento = NULL;
 		datosPlan->quantumCorriente = 0;
@@ -423,11 +443,12 @@ int esperarUbicacionCaja(datos_planificador_t *datosPlan,
 	header_t header;
 	recv(datosPlan->sockfdNivel, &header, sizeof(header_t), MSG_WAITALL);
 	char *respuesta = malloc(header.length);
-	int nbytes = recv(datosPlan->sockfdNivel, respuesta, header.length,
-			MSG_WAITALL);
+	int nbytes = 0;
 
 	switch (header.type) {
 	case UBICACION_CAJA:
+		nbytes = recv(datosPlan->sockfdNivel, respuesta, header.length,
+				MSG_WAITALL);
 		unPersonaje->coordObjetivo = coordenadas_deserializer(
 				respuesta + sizeof(char));
 		header.length = header.length - sizeof(char);
@@ -437,6 +458,13 @@ int esperarUbicacionCaja(datos_planificador_t *datosPlan,
 	case NOTIFICAR_ALGORITMO_PLANIFICACION:
 		actualizarAlgoritmo(&header, datosPlan);
 		esperarUbicacionCaja(datosPlan, unPersonaje);
+		break;
+	case VICTIMA_ENEMIGO:
+		removerPersonaje(&header, datosPlan, "enemigo");
+		break;
+	default:
+		log_warning(logFile, "Mensaje inesperado. type=%d length=%d.",
+				header.type, header.length);
 		break;
 	}
 
