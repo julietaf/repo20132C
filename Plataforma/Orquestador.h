@@ -76,7 +76,7 @@ void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax);
 configuracion_plataforma_t *getConfiguracion(void);
 int atenderPedido(int sockfd);
 int enviarHandshakeOrquestador(int sockfd);
-void crearNuevoHiloPlanificador(int sockfd);
+datos_planificador_t *crearNuevoHiloPlanificador(int sockfd);
 datos_planificador_t *crearDatosPlanificador(
 		informacion_planificacion_t *infoPlan, int sockfdNivel);
 void delegarAlPlanificador(header_t *header, int sockfd);

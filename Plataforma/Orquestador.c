@@ -69,6 +69,11 @@ void aceptarNuevaConexion(int sockfd, fd_set *bagMaster, int *sockfdMax) {
 		logguearFinPlan(&header, nuevoSockfd);
 		chequearUltimoPersonaje();
 		break;
+	default:
+		log_warning(logFile,
+				"Mensaje inesperado de nueva conexion. type=%d length=%d.",
+				header.type, header.length);
+		break;
 	}
 }
 
@@ -105,6 +110,11 @@ void atenderNuevoPersonaje(int sockfd) {
 	switch (header.type) {
 	case NOTIFICAR_DATOS_PERSONAJE:
 		delegarAlPlanificador(&header, sockfd);
+		break;
+	default:
+		log_warning(logFile,
+				"Mensaje inesperado de nuevo personaje. type=%d length=%d.",
+				header.type, header.length);
 		break;
 	}
 }
@@ -196,8 +206,11 @@ void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 		char *nombreNivel) {
 	datos_planificador_t *datosPlanificador = buscarPlanificador(nombreNivel);
 
-	if (datosPlanificador != NULL ) {
-		notificarNivel(datosPlanificador->sockfdNivel, datosPersonaje->simbolo);
+	if (datosPlanificador == NULL ) {
+		agregarPersonajeAEspera(nombreNivel, datosPersonaje);
+		log_info(logFile, "%s pedido por %c no conectado todavia.", nombreNivel,
+				datosPersonaje->simbolo);
+	} else {
 		FD_SET(datosPersonaje->sockfd, datosPlanificador->bagMaster);
 
 		if (datosPersonaje->sockfd > datosPlanificador->sockfdMax)
@@ -206,12 +219,9 @@ void agregarPersonajeAListos(datos_personaje_t *datosPersonaje,
 		log_info(logFile, "Personaje %c delegado a %s", datosPersonaje->simbolo,
 				datosPlanificador->nombre);
 		pthread_mutex_lock(datosPlanificador->mutexColas);
+		notificarNivel(datosPlanificador->sockfdNivel, datosPersonaje->simbolo);
 		queue_push(datosPlanificador->personajesListos, datosPersonaje);
 		pthread_mutex_unlock(datosPlanificador->mutexColas);
-	} else {
-		agregarPersonajeAEspera(nombreNivel, datosPersonaje);
-		log_info(logFile, "%s pedido por %c no conectado todavia.", nombreNivel,
-				datosPersonaje->simbolo);
 	}
 }
 
@@ -245,8 +255,9 @@ datos_personaje_t *crearDatosPersonaje(char simbolo, int sockfdPersonaje) {
 	return datosPersonaje;
 }
 
-void crearNuevoHiloPlanificador(int sockfd) {
+datos_planificador_t *crearNuevoHiloPlanificador(int sockfd) {
 	header_t header;
+	datos_planificador_t *datosPlanificador = NULL;
 	recv(sockfd, &header, sizeof(header), MSG_WAITALL);
 
 	if (header.type == NOTIFICAR_ALGORITMO_PLANIFICACION) {
@@ -255,15 +266,18 @@ void crearNuevoHiloPlanificador(int sockfd) {
 		informacion_planificacion_t *infoPlanificacion =
 				informacionPlanificacion_deserializer(dataNivel);
 		free(dataNivel);
-		datos_planificador_t *datosPlanificador = crearDatosPlanificador(
-				infoPlanificacion, sockfd);
+		datosPlanificador = crearDatosPlanificador(infoPlanificacion, sockfd);
 		informacionPlanificacion_destroy(infoPlanificacion);
 		log_info(logFile, "%s conectado.", datosPlanificador->nombre);
 		pthread_create(datosPlanificador->hilo, NULL, (void *) planificador,
 				(void *) datosPlanificador);
 		list_add(listaPlanificadores, datosPlanificador);
 		informarPersonajesEspera(datosPlanificador);
-	}
+	} else
+		log_warning(logFile, "Mensaje inesperado del Nivel. type=%d length=%d.",
+				header.type, header.length);
+
+	return datosPlanificador;
 }
 
 void informarPersonajesEspera(datos_planificador_t *datosPlanificador) {
