@@ -69,6 +69,9 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 		enviarPersonajeFinalizo(datosPlan, unPersonaje->simbolo);
 		FD_CLR(sockfdPersonaje, datosPlan->bagMaster);
 		close(sockfdPersonaje);
+		estado_personaje_t *estado = buscarEstadoPersonaje(
+				unPersonaje->simbolo);
+		estado->finalizoPlan = 1;
 		log_error(logFile,
 				"Personaje %c cerro la conexion inesperadamente con %s.",
 				unPersonaje->simbolo, datosPlan->nombre);
@@ -463,7 +466,8 @@ int esperarUbicacionCaja(datos_planificador_t *datosPlan,
 		removerPersonaje(&header, datosPlan, "enemigo");
 		break;
 	default:
-		log_warning(logFile, "Mensaje inesperado. type=%d length=%d.",
+		log_warning(logFile,
+				"Mensaje inesperado. type=%d length=%d. (esperar ubicacion caja)",
 				header.type, header.length);
 		break;
 	}
@@ -706,29 +710,35 @@ int actualizarAlgoritmo(header_t *header, datos_planificador_t *datosPlan) {
 			MSG_WAITALL);
 	informacion_planificacion_t *info = informacionPlanificacion_deserializer(
 			data);
+
+	if (strcmp(datosPlan->nombre, info->nombreNivel) == 0) { //validacion porque la primer notificacion trae fruta.
+		datosPlan->algoritmo = info->algoritmo;
+		datosPlan->retardo = info->retardo;
+		datosPlan->quatum = info->quantum;
+
+		if (datosPlan->personajeEnMovimiento != NULL ) {
+			pthread_mutex_lock(datosPlan->mutexColas);
+			queue_push(datosPlan->personajesListos,
+					datosPlan->personajeEnMovimiento);
+			datosPlan->personajeEnMovimiento = NULL;
+			pthread_mutex_unlock(datosPlan->mutexColas);
+		}
+
+		switch (datosPlan->algoritmo) {
+		case ROUND_ROBIN:
+			log_info(logFile, "Cambio de algoritmo a Round Robin.");
+			break;
+		case SRDF:
+			log_info(logFile,
+					"Cambio de algoritmo a Shortest Remaining Distance First.");
+			break;
+		default:
+			log_warning(logFile, "Algoritmo no identificado.");
+		}
+	}
+
 	free(data);
-	datosPlan->algoritmo = info->algoritmo;
-	datosPlan->retardo = info->retardo;
-	datosPlan->quatum = info->quantum;
 	informacionPlanificacion_destroy(info);
-
-	if (datosPlan->personajeEnMovimiento != NULL ) {
-		pthread_mutex_lock(datosPlan->mutexColas);
-		queue_push(datosPlan->personajesListos,
-				datosPlan->personajeEnMovimiento);
-		datosPlan->personajeEnMovimiento = NULL;
-		pthread_mutex_unlock(datosPlan->mutexColas);
-	}
-
-	switch (datosPlan->algoritmo) {
-	case ROUND_ROBIN:
-		log_info(logFile, "Cambio de algoritmo a Round Robin.");
-		break;
-	case SRDF:
-		log_info(logFile,
-				"Cambio de algoritmo a Shortest Resource Distance First.");
-		break;
-	}
 
 	return nbytes;
 }
