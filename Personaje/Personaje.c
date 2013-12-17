@@ -14,7 +14,6 @@ int main(void) {
 
 	signal(SIGUSR1, (funcPtr) signalRutinaVidas);
 	signal(SIGTERM, (funcPtr) signalRutinaMuerte);
-
 	mutexContadorVidas = malloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(mutexContadorVidas, NULL );
 
@@ -56,7 +55,64 @@ int main(void) {
 	return EXIT_SUCCESS;
 }
 
-//-----------------------------------------------------------------------------------------------------------------------------
+int gestionarFinHilo() {
+	int ret;
+
+	log_info(logFile, "Semaforo main habilito, joineando hilos");
+
+	if (estado->motivo == FIN_REINICIO_PLAN) { //Reinicia el plan
+		matarHilos();
+		ret = mostrarContinue() ? REINICIAR : FINALIZAR;
+	} else { // Termino un hilo
+		ret = gestionarFinNivel(estado->id) ? FINALIZAR : ESPERAR_HILO; //Si terminaron todos
+	}
+
+	return ret;
+}
+
+void matarHilos() {
+	log_info(logFile, "Matando Hilos (a matar: %d)", hilos->elements_count);
+
+	while (hilos->elements_count != 0) {
+		printf("elem count: %d\n", hilos->elements_count);
+		hilo_personaje_t *datahilo = list_remove(hilos, 0);
+//		printf("2");
+		enviarFinNivel(datahilo);
+//		printf("8");
+		if (pthread_cancel(datahilo->hilo) == 0) {
+//			printf("9");
+			pthread_join(datahilo->hilo, (void **) NULL );
+//			printf("10");
+			close(datahilo->sockfdPlanificador);
+//			printf("11");
+//			sacarHiloLista(datahilo->nivel);
+//			printf("12");
+
+			//TODO: hacer un free de la estructura datahilo.
+		} else {
+			log_error(logFile, "no se pudo matar el hilo %s", datahilo->nivel);
+		}
+	}
+}
+
+int gestionarFinNivel(char id) {
+	log_info(logFile, "Gestion del hilo por fin de nivel");
+	int i;
+
+	for (i = 0; i < hilos->elements_count; i++) {
+		hilo_personaje_t* hilo = list_get(hilos, i);
+
+		if (hilo->estadoPersonaje == FIN_NIVEL) {
+//			sacarHiloLista(hilo->nivel); //TODO: Testiar refactoring aca
+			list_remove(hilos, i);
+			close(hilo->sockfdPlanificador);
+//			dataHiloDestroy(hilo);
+			break;
+		}
+	}
+
+	return list_is_empty(hilos);
+}
 
 hilo_personaje_t *crearDatosPersonaje(int index) {
 
@@ -111,25 +167,26 @@ void getConfiguracion(void) {
 }
 
 void rutinaReinicioPlan() {
-
 	log_info(logFile, "Reinicio Plan de niveles");
 	estado->id = '\0';
 	estado->motivo = FIN_REINICIO_PLAN;
 	sem_post(&sHiloTermino);
-
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void dataHiloDestroy(hilo_personaje_t* datos) {
-
 	free(datos->nivel);
 	free(datos->objetivos);
 	free(datos->ipOrquestador);
-//	free(datos->puertoOrquestador);
-	coordenadas_destroy(datos->coordPosicion);
-	coordenadas_destroy(datos->coordObjetivo);
 
+	if (datos->coordPosicion != NULL )
+		coordenadas_destroy(datos->coordPosicion);
+
+	if (datos->coordObjetivo != NULL )
+		coordenadas_destroy(datos->coordObjetivo);
+
+	free(datos);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -189,25 +246,27 @@ int rutinaMuerte() {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 int mostrarContinue() {
-
 	log_info(logFile, "Lanzar continue");
 	char r = 'i';
-	while (r != 'S' && r != 's' && r != 'N' && r != 'n') {
+	int retval = 0;
 
-		printf("El personaje ha perdido todas sus vidas, desea continuar? \n");
-		printf("S/N \n");
+	while (r != 'S' && r != 's' && r != 'N' && r != 'n') {
+		printf(
+				"El personaje ha perdido todas sus vidas, desea continuar? \nS/N \n");
 		scanf(" %c", &r);
 
 		if (r == 'S' || r == 's') {
 			contItentos++;
 			printf("Intentos: %d\n", contItentos);
-			return 1;
+			retval = REINICIAR;
+			log_info(logFile, "Orden de reiniciar plan de niveles.");
 		} else if (r == 'N' || r == 'n') {
-			return 0;
+			retval = FINALIZAR;
+			log_info(logFile, "Orden de finalizar proceso.");
 		}
-
 	}
-	return r == 'S';
+
+	return retval;
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -237,71 +296,23 @@ void inicializarLog() {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-void matarHilos() {
-	log_info(logFile, "Matando Hilos");
-
-	while (hilos->elements_count != 0) {
-		hilo_personaje_t* datahilo = list_get(hilos, 0);
-		if (pthread_cancel(datahilo->hilo) != 0) {
-			log_error(logFile, "no se pudo matar el hilo");
-		} else {
-			pthread_join(datahilo->hilo, (void **) NULL );
-			enviarFinNivel(datahilo);
-			sacarHiloLista(datahilo);
-		}
-	}
-
-}
+//-----------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-int gestionarFinNivel(char id) {
-	log_info(logFile, "Gestion del hilo por fin de nivel");
-	int i;
-
-	for (i = 0; i < hilos->elements_count; i++) {
-		hilo_personaje_t* hilo = list_get(hilos, i);
-		if (hilo->estadoPersonaje == FIN_NIVEL) {
-			sacarHiloLista(hilo); //TODO: Testiar refactoring aca
-//			dataHiloDestroy(hilo);
-			break;
-		}
-	}
-
-	return list_is_empty(hilos);
-}
-
 //-----------------------------------------------------------------------------------------------------------------------------
 
-int gestionarFinHilo() {
-	int ret;
-
-	log_info(logFile, "Semaforo main habilito, joineando hilos");
-	if (estado->motivo == FIN_REINICIO_PLAN) { //Reinicia el plan
-		matarHilos();
-		ret = mostrarContinue() ? REINICIAR : FINALIZAR;
-
-	} else { // Termino un hilo
-		ret = gestionarFinNivel(estado->id) ? FINALIZAR : ESPERAR_HILO; //Si terminaron todos
-
+hilo_personaje_t *sacarHiloLista(char *nombreNivel) {
+	int _is_hilo_personaje(hilo_personaje_t *hPersonaje) {
+		return strcmp(hPersonaje->nivel, nombreNivel) == 0;
 	}
 
-	return ret;
-}
-
-//-----------------------------------------------------------------------------------------------------------------------------
-
-void sacarHiloLista(hilo_personaje_t* hiloPersonaje) {
-
-	int _is_personaje(hilo_personaje_t *hPersonaje) {
-		return hPersonaje->hilo == hiloPersonaje->hilo;
-	}
-
+	hilo_personaje_t *hiloPersonaje = list_remove_by_condition(hilos,
+			(void *) _is_hilo_personaje);
 	log_info(logFile, "Sacando personaje: %c del nivel: %s",
 			hiloPersonaje->simbolo, hiloPersonaje->nivel);
-	list_remove_by_condition(hilos, (void *) _is_personaje);
 //	dataHiloDestroy(personaje); TODO: Ver por que rompe si quiero volver a lanzar el hilo
-
+	return hiloPersonaje;
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -309,8 +320,6 @@ void sacarHiloLista(hilo_personaje_t* hiloPersonaje) {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 void hiloPersonaje(hilo_personaje_t *datos) {
-//	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-//	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 	crearClientePlanificador(datos);
 
 	enviarHandshakePersonaje(datos->sockfdPlanificador);
@@ -322,15 +331,14 @@ void hiloPersonaje(hilo_personaje_t *datos) {
 	datos->coordPosicion->ejeY = 0;
 
 	while (1) {
-
-//		log_debug(logFile, "Testeo si me cancelaron");
-//		pthread_testcancel();
 		int nbytes = atenderOrquestador(datos);
-		if (nbytes == 0) {
+
+		if (nbytes <= 0) {
 			log_warning(logFile, "Se perdio la conexion con plataforma");
 //			TODO:que hacer cuando la plataforma se desconecta?
 			break;
 		}
+
 		if (datos->estadoPersonaje == FIN_NIVEL) {
 			log_info(logFile, "Saliendo del loop por fin de nivel");
 			estado->id = datos->simbolo;
@@ -522,6 +530,11 @@ int hiloRutinaMuerte(hilo_personaje_t *datos, char* causa) {
 
 		if (flagReinicioPlan == 0) {
 			rutinaReinicioPlan();
+//			hilo_personaje_t *self = sacarHiloLista(datos->nivel);
+//			enviarFinNivel(self);
+//			close(self->sockfdPlanificador);
+//			dataHiloDestroy(self);
+			pthread_exit((void *) NULL );
 		}
 	}
 
@@ -582,11 +595,16 @@ void enviarHandshakePersonaje(int sockfd) {
 
 void enviarFinNivel(hilo_personaje_t *datos) {
 
+//	printf("3");
 	header_t header;
+//	printf("4");
 	header.type = FINALIZAR_NIVEL;
+//	printf("5");
 	header.length = 0;
+//	printf("6");
 
 	sockets_send(datos->sockfdPlanificador, &header, '\0');
+//	printf("7");
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
