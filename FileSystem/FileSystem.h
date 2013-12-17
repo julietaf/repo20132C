@@ -16,6 +16,8 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <fuse.h>
+#include <errno.h>
+#include <stddef.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -34,6 +36,9 @@
 #define CONFIG_PATH "./FuseConf.txt"
 #define LOG_PATH "./FuseLog.txt"
 #define BLOCK_SIZE 4096
+#define DIRECTORIO_RAIZ "/"
+#define _FILE_OFFSET_BITS 64
+#define D_FILE_OFFSET_BITS 64
 
 enum enum_estado{
 	BORRADO,
@@ -67,7 +72,7 @@ typedef struct grasa_nodo_t { // un cuarto de bloque (256 bytes)
 	uint8_t state; // 0: borrado, 1: archivo, 2: directorio
 	unsigned char filename[GFILENAMELENGTH];
 	ptrGBloque parent_dir_block;
-	uint32_t file_size;
+	uint32_t file_size; //en Bytes
 	uint64_t created;
 	uint64_t modified;
 	ptrGBloque blk_indirect[BLOQUEINDIRECT];
@@ -88,9 +93,15 @@ typedef struct {
 t_log *logFile;
 t_config* configFile;
 configuracion_koopa_t *config;
+t_grasa_fs* grasaFS;
 
+
+//-------------------------------Propietarias-----------------------------------
 void getConfiguracion();
-t_grasa_fs* fileSystemCrear();
+//-------------------------------FileSystem-------------------------------------
+void fileSystemCrear();
 t_disco* discoCrear();
+int rutaToNumberBlock (const char* ruta);
+char** rutaToArray(const char* ruta);
 
 #endif /* FILESYSTEM_H_ */
