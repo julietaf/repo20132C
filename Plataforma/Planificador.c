@@ -424,21 +424,30 @@ int esperarSolicitudRecurso(datos_planificador_t *datosPlan,
 int reenviarUbicacionCaja(datos_planificador_t *datosPlan, int sockfdPersonaje,
 		header_t *header) {
 	char *data = malloc(header->length);
-	recv(sockfdPersonaje, data, header->length, MSG_WAITALL);
+	int nbytes = recv(sockfdPersonaje, data, header->length, MSG_WAITALL);
 	datos_personaje_t *unPersonaje = buscarPersonajePorSockfd(datosPlan,
 			sockfdPersonaje);
-	unPersonaje->objetivo = data[0];
-	char *dataSend = malloc(2 * sizeof(char));
-	memcpy(dataSend, data, sizeof(char));
-	memcpy(dataSend + sizeof(char), &unPersonaje->simbolo, sizeof(char));
-	header->length = 2 * sizeof(char);
-	sockets_send(datosPlan->sockfdNivel, header, dataSend);
-	log_info(logFile, "Personaje %c con nuevo objetivo: %c",
-			unPersonaje->simbolo, unPersonaje->objetivo);
-	free(dataSend);
+
+	if (unPersonaje == NULL )
+		log_warning(logFile,
+				"Personaje %c no encontrado. (reenviar ubicacion caja).",
+				data[1]);
+	else {
+		unPersonaje->objetivo = data[0];
+		char *dataSend = malloc(2 * sizeof(char));
+		memcpy(dataSend, data, sizeof(char));
+		memcpy(dataSend + sizeof(char), &unPersonaje->simbolo, sizeof(char));
+		header->length = 2 * sizeof(char);
+		sockets_send(datosPlan->sockfdNivel, header, dataSend);
+		log_info(logFile, "Personaje %c con nuevo objetivo: %c",
+				unPersonaje->simbolo, unPersonaje->objetivo);
+		free(dataSend);
+		nbytes = esperarUbicacionCaja(datosPlan, unPersonaje);
+	}
+
 	free(data);
 
-	return esperarUbicacionCaja(datosPlan, unPersonaje);
+	return nbytes;
 }
 
 int esperarUbicacionCaja(datos_planificador_t *datosPlan,
