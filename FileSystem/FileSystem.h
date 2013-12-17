@@ -103,5 +103,7 @@ void fileSystemCrear();
 t_disco* discoCrear();
 int rutaToNumberBlock (const char* ruta);
 char** rutaToArray(const char* ruta);
+int padreRutaToNumberBlock(const char* path);
+int buscarNodoDisponible();
 
 #endif /* FILESYSTEM_H_ */

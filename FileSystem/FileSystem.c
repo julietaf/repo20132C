@@ -114,6 +114,29 @@ int rutaToNumberBlock(const char* ruta) {
 
 }
 
+int padreRutaToNumberBlock(const char* path){
+	char* temp;
+	temp = string_duplicate(path);
+	int i, j, ret;
+
+	for (i = 0; i < strlen(path); i++){
+		if (temp[i] == '/'){
+			j = i;
+		}
+	}
+	temp = string_substring_until(path, j);
+	ret = rutaToNumberBlock(temp);
+	free(temp);
+	return ret;
+}
+
+//----------------------------------------------------------------------------------------------------------
+
+int buscarNodoDisponible(){
+	//TODO:
+	return 100;
+}
+
 //----------------------------------------------------------------------------------------------------------
 
 char** rutaToArray(const char* text) {
@@ -324,9 +347,24 @@ static int grasa_read(const char *path, char *buf, size_t size, off_t offset, st
 
 //-------------------------------------------------------------------------------------------------
 
-static int grasa_mkdir() {
-	//TODO: Not implemented exception
-	return 1;
+static int grasa_mkdir(const char *path, mode_t mode) {
+
+	mode = S_IFDIR | 0755;
+
+//	todo: mutuar aca si o si
+	int nroNodo = buscarNodoDisponible();
+
+	if (nroNodo != -1 ){
+		strcpy(grasaFS->nodos[nroNodo].filename, strrchr('/')+ 1);
+		grasaFS->nodos[nroNodo].state = DIRECTORIO;
+		int blkPadre = padreRutaToNumberBlock(path);
+		grasaFS->nodos[nroNodo].parent_dir_block =
+	}else{
+		return -ENOENT;
+	}
+
+
+
 }
 
 //-------------------------------------------------------------------------------------------------
