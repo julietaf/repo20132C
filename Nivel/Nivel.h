@@ -43,17 +43,17 @@
 
 //------------------------------------------TYPES-----------------------------------------------------
 typedef struct nivel_conf_t {
-        char* nombre;
-        char simbolo[2];
-        char *orquestadoraddr;
-        char *orquestadorport;
-        char *localhostaddr;
-        char *localhostport;
-        char *logLevel;
-        int deadlockTime;
-        int recovery;
-        int enemigos;
-        int sleepEnemigos;
+	char* nombre;
+	char simbolo[2];
+	char *orquestadoraddr;
+	char *orquestadorport;
+	char *localhostaddr;
+	char *localhostport;
+	char *logLevel;
+	int deadlockTime;
+	int recovery;
+	int enemigos;
+	int sleepEnemigos;
 } NIVEL_CONF;
 
 //-----------------------------------------GLOBALES-----------------------------------------------------
@@ -95,7 +95,7 @@ void tratarFinalizacionPersonaje(char* data);
 void notificarMuertePersonaje(char id, int causa);
 void notificacionDarRecurso(char id);
 void notificacionBloqueo(char id);
-void crearHiloEnemigo ();
+void crearHiloEnemigo();
 void crearHiloDeadLock();
 void dibujar();
 int personajeEnCaja(char pId, char rId);
@@ -113,10 +113,11 @@ void logBloqueados(t_list* bloqueados);
 //-----------------------Hilo Enemigo--------------------------------
 void enemigo(int idEnemigo);
 void agregarEnemigo(int idEnemigo, coordenada_t* posicion);
-void entrarAlNivel(coordenada_t* posicion );
-void cazarPersonajes(t_list* bufferMovimiento, coordenada_t* posicion);
+void entrarAlNivel(coordenada_t* posicion);
+void cazarPersonajes(t_list* bufferMovimiento, coordenada_t* posicion,
+		int idEnemigo);
 int hayPersonajes();
-void perseguirPersonaje(coordenada_t* posicion);
+void perseguirPersonaje(coordenada_t* posicion, int idEnemigo);
 void movimientoDeEspera(t_list* bufferMovimiento, coordenada_t* posicion);
 int validarPosicionesEnemigo(t_list* bufferMovimiento);
 int validarPosicionEnemigo(coordenada_t* posicion);

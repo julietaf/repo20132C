@@ -69,6 +69,9 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 		enviarPersonajeFinalizo(datosPlan, unPersonaje->simbolo);
 		FD_CLR(sockfdPersonaje, datosPlan->bagMaster);
 		close(sockfdPersonaje);
+		estado_personaje_t *estado = buscarEstadoPersonaje(
+				unPersonaje->simbolo);
+		estado->finalizoPlan = 1;
 		log_error(logFile,
 				"Personaje %c cerro la conexion inesperadamente con %s.",
 				unPersonaje->simbolo, datosPlan->nombre);
@@ -421,21 +424,30 @@ int esperarSolicitudRecurso(datos_planificador_t *datosPlan,
 int reenviarUbicacionCaja(datos_planificador_t *datosPlan, int sockfdPersonaje,
 		header_t *header) {
 	char *data = malloc(header->length);
-	recv(sockfdPersonaje, data, header->length, MSG_WAITALL);
+	int nbytes = recv(sockfdPersonaje, data, header->length, MSG_WAITALL);
 	datos_personaje_t *unPersonaje = buscarPersonajePorSockfd(datosPlan,
 			sockfdPersonaje);
-	unPersonaje->objetivo = data[0];
-	char *dataSend = malloc(2 * sizeof(char));
-	memcpy(dataSend, data, sizeof(char));
-	memcpy(dataSend + sizeof(char), &unPersonaje->simbolo, sizeof(char));
-	header->length = 2 * sizeof(char);
-	sockets_send(datosPlan->sockfdNivel, header, dataSend);
-	log_info(logFile, "Personaje %c con nuevo objetivo: %c",
-			unPersonaje->simbolo, unPersonaje->objetivo);
-	free(dataSend);
+
+	if (unPersonaje == NULL )
+		log_warning(logFile,
+				"Personaje %c no encontrado. (reenviar ubicacion caja).",
+				data[1]);
+	else {
+		unPersonaje->objetivo = data[0];
+		char *dataSend = malloc(2 * sizeof(char));
+		memcpy(dataSend, data, sizeof(char));
+		memcpy(dataSend + sizeof(char), &unPersonaje->simbolo, sizeof(char));
+		header->length = 2 * sizeof(char);
+		sockets_send(datosPlan->sockfdNivel, header, dataSend);
+		log_info(logFile, "Personaje %c con nuevo objetivo: %c",
+				unPersonaje->simbolo, unPersonaje->objetivo);
+		free(dataSend);
+		nbytes = esperarUbicacionCaja(datosPlan, unPersonaje);
+	}
+
 	free(data);
 
-	return esperarUbicacionCaja(datosPlan, unPersonaje);
+	return nbytes;
 }
 
 int esperarUbicacionCaja(datos_planificador_t *datosPlan,
@@ -463,7 +475,8 @@ int esperarUbicacionCaja(datos_planificador_t *datosPlan,
 		removerPersonaje(&header, datosPlan, "enemigo");
 		break;
 	default:
-		log_warning(logFile, "Mensaje inesperado. type=%d length=%d.",
+		log_warning(logFile,
+				"Mensaje inesperado. type=%d length=%d. (esperar ubicacion caja)",
 				header.type, header.length);
 		break;
 	}
@@ -706,29 +719,35 @@ int actualizarAlgoritmo(header_t *header, datos_planificador_t *datosPlan) {
 			MSG_WAITALL);
 	informacion_planificacion_t *info = informacionPlanificacion_deserializer(
 			data);
+
+	if (strcmp(datosPlan->nombre, info->nombreNivel) == 0) { //validacion porque la primer notificacion trae fruta.
+		datosPlan->algoritmo = info->algoritmo;
+		datosPlan->retardo = info->retardo;
+		datosPlan->quatum = info->quantum;
+
+		if (datosPlan->personajeEnMovimiento != NULL ) {
+			pthread_mutex_lock(datosPlan->mutexColas);
+			queue_push(datosPlan->personajesListos,
+					datosPlan->personajeEnMovimiento);
+			datosPlan->personajeEnMovimiento = NULL;
+			pthread_mutex_unlock(datosPlan->mutexColas);
+		}
+
+		switch (datosPlan->algoritmo) {
+		case ROUND_ROBIN:
+			log_info(logFile, "Cambio de algoritmo a Round Robin.");
+			break;
+		case SRDF:
+			log_info(logFile,
+					"Cambio de algoritmo a Shortest Remaining Distance First.");
+			break;
+		default:
+			log_warning(logFile, "Algoritmo no identificado.");
+		}
+	}
+
 	free(data);
-	datosPlan->algoritmo = info->algoritmo;
-	datosPlan->retardo = info->retardo;
-	datosPlan->quatum = info->quantum;
 	informacionPlanificacion_destroy(info);
-
-	if (datosPlan->personajeEnMovimiento != NULL ) {
-		pthread_mutex_lock(datosPlan->mutexColas);
-		queue_push(datosPlan->personajesListos,
-				datosPlan->personajeEnMovimiento);
-		datosPlan->personajeEnMovimiento = NULL;
-		pthread_mutex_unlock(datosPlan->mutexColas);
-	}
-
-	switch (datosPlan->algoritmo) {
-	case ROUND_ROBIN:
-		log_info(logFile, "Cambio de algoritmo a Round Robin.");
-		break;
-	case SRDF:
-		log_info(logFile,
-				"Cambio de algoritmo a Shortest Resource Distance First.");
-		break;
-	}
 
 	return nbytes;
 }

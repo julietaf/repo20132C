@@ -30,6 +30,7 @@ typedef struct {
 	char *ipOrquestador;
 	char *puertoOrquestador;
 	char **planNiveles;
+	t_log_level detalleLog;
 } configuracion_personaje_t;
 
 typedef struct {
@@ -55,14 +56,11 @@ typedef struct {
 typedef void (*funcPtr)();
 
 enum enum_finalizacion_hilo {
-	FIN_REINICIO_PLAN,
-	FIN_NIVEL
+	FIN_REINICIO_PLAN, FIN_NIVEL
 };
 
-enum finalizacion_proceso{
-	FINALIZAR,
-	REINICIAR,
-	ESPERAR_HILO
+enum finalizacion_proceso {
+	FINALIZAR, REINICIAR, ESPERAR_HILO
 };
 
 t_config *configFile;
@@ -82,20 +80,20 @@ char *getObjetivoKey(char *nombreNivel);
 void perderVida(char* motivo);
 void reiniciarNivel(hilo_personaje_t* personaje, int nivelAReiniciar);
 int atenderOrquestador(hilo_personaje_t *datos);
-int enviarDatosPersonaje( hilo_personaje_t *datos);
-int realizarMovimiento( hilo_personaje_t *datos);
+int enviarDatosPersonaje(hilo_personaje_t *datos);
+int realizarMovimiento(hilo_personaje_t *datos);
 int solicitarCoordenadasObjetivo(int sockfdOrquestador, char *objetivo);
-int recibirCoordenadas( hilo_personaje_t *datos, header_t header);
+int recibirCoordenadas(hilo_personaje_t *datos, header_t header);
 int enviarNotificacionMovimiento(int sockfdOrquestador,
 		coordenada_t * coordenada, char id);
-int enviarSolicitudObjetivo( hilo_personaje_t *datos);
-void recibirRecurso( hilo_personaje_t *datos);
-int esperarDesbloqueo( hilo_personaje_t *datos);
-int hiloRutinaMuerte( hilo_personaje_t *datos, char* causa);
-void rutinaReinicioNivel( hilo_personaje_t *datos);
+int enviarSolicitudObjetivo(hilo_personaje_t *datos);
+void recibirRecurso(hilo_personaje_t *datos);
+int esperarDesbloqueo(hilo_personaje_t *datos);
+int hiloRutinaMuerte(hilo_personaje_t *datos, char* causa);
+void rutinaReinicioNivel(hilo_personaje_t *datos);
 void rutinaReinicioPlan();
 void reiniciarDatosNivel(hilo_personaje_t *datos);
-void rutinaFinalizarNivel( hilo_personaje_t *datos );
+void rutinaFinalizarNivel(hilo_personaje_t *datos);
 void dataHiloDestroy(hilo_personaje_t* datos);
 void signalRutinaVidas();
 void signalRutinaMuerte();
@@ -108,5 +106,6 @@ void matarHilos();
 int gestionarFinNivel(char id);
 void enviarFinNivel(hilo_personaje_t *datos);
 int gestionarFinHilo();
-void sacarHiloLista(hilo_personaje_t* hiloPersonaje) ;
+hilo_personaje_t *sacarHiloLista(char *nombreNivel);
+
 #endif /* PERSONAJE_H_ */
