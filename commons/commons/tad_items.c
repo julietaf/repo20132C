@@ -82,7 +82,7 @@ void BorrarAdquirido(ITEM_ADQ** ListaAdq, char id) {
 }
 }
 
-void MoverPersonaje(t_list* items, char id, int x, int y) {
+void MoverPersonaje(t_list* items, char id, int x, int y, t_log *logFile) {
 
 	ITEM_NIVEL* item = _search_item_by_id(items, id);
 
@@ -91,6 +91,7 @@ void MoverPersonaje(t_list* items, char id, int x, int y) {
 		item->posy = y;
 	} else {
 		printf("WARN: Item %c no existente\n", id);
+		log_warning(logFile, "WARN: Item %c no existente. (mover personaje)", id);
 	}
 
 }
@@ -99,7 +100,6 @@ void moverEnemigo(t_list* ListaItems, int idEnemigo, int x, int y) {
 
 	ITEM_NIVEL * temp = _search_item_by_id_enemigo(ListaItems, idEnemigo);
 
-
 	if ((temp != NULL )&& (temp->idEnemigo == idEnemigo)){
 	temp->posx = x;
 	temp->posy = y;
@@ -107,7 +107,7 @@ void moverEnemigo(t_list* ListaItems, int idEnemigo, int x, int y) {
 
 }
 
-void restarRecurso(t_list* items, char id) {
+void restarRecurso(t_list* items, char id, t_log *logFile) {
 
 	ITEM_NIVEL* item = _search_item_by_id(items, id);
 
@@ -115,11 +115,12 @@ void restarRecurso(t_list* items, char id) {
 		item->quantity = item->quantity > 0 ? item->quantity - 1 : 0;
 	} else {
 		printf("WARN: Item %c no existente\n", id);
+		log_warning(logFile, "WARN: Item %c no existente. (restar recurso)", id);
 	}
 
 }
 
-void restarRecursos(t_list* items, char id, int cant) {
+void restarRecursos(t_list* items, char id, int cant, t_log *logFile) {
 
 	ITEM_NIVEL* item = _search_item_by_id(items, id);
 
@@ -127,11 +128,12 @@ void restarRecursos(t_list* items, char id, int cant) {
 		item->quantity = item->quantity > cant ? item->quantity - cant : 0;
 	} else {
 		printf("WARN: Item %c no existente\n", id);
+		log_warning(logFile, "WARN: Item %c no existente. (restar recursos)", id);
 	}
 
 }
 
-coordenada_t* obtenerCoordenadas(t_list* items, char id) {
+coordenada_t* obtenerCoordenadas(t_list* items, char id, t_log *logFile) {
 	coordenada_t* resul = NULL;
 
 	ITEM_NIVEL* item = _search_item_by_id(items, id);
@@ -142,19 +144,21 @@ coordenada_t* obtenerCoordenadas(t_list* items, char id) {
 		resul->ejeY = item->posy;
 	} else {
 		printf("WARN: Item %c no existente\n", id);
+		log_warning(logFile, "WARN: Item %c no existente. (obtener coordenadas)", id);
 	}
 
 	return resul;
 }
 
-void matarPersonaje(t_list* personajes, t_list* recursos, char id) {
+void matarPersonaje(t_list* personajes, t_list* recursos, char id,
+		t_log *logFile) {
 	//encuentro personaje
 	ITEM_NIVEL* personaje = _search_item_by_id(personajes, id);
 
 	//Libero intems
 	if ((personaje != NULL )&& (personaje->item_type==PERSONAJE_ITEM_TYPE)){
 	while (personaje->objetosAdquiridos != NULL) {
-		incrementarRecurso(recursos, personaje->objetosAdquiridos->id, personaje->objetosAdquiridos->quantity);
+		incrementarRecurso(recursos, personaje->objetosAdquiridos->id, personaje->objetosAdquiridos->quantity,logFile);
 
 		BorrarAdquirido(&personaje->objetosAdquiridos, personaje->objetosAdquiridos->id);
 	}
@@ -167,7 +171,7 @@ void matarPersonaje(t_list* personajes, t_list* recursos, char id) {
 }
 
 int darRecursoPersonaje(t_list* personajes, t_list* recursos, char id,
-		char objetoId) {
+		char objetoId, t_log *logFile) {
 
 	ITEM_NIVEL * personaje = _search_item_by_id(personajes, id);
 	int respuesta;
@@ -199,7 +203,7 @@ int darRecursoPersonaje(t_list* personajes, t_list* recursos, char id,
 		}
 
 	}
-	restarRecurso(recursos, objetoId);
+	restarRecurso(recursos, objetoId,logFile);
 	//printf("Cantidad recursos: %d\n", temp2->quantity);
 
 }
@@ -207,7 +211,7 @@ int darRecursoPersonaje(t_list* personajes, t_list* recursos, char id,
 
 }
 
-void incrementarRecurso(t_list* items, char id, int cant) {
+void incrementarRecurso(t_list* items, char id, int cant, t_log *logFile) {
 
 	ITEM_NIVEL* item = _search_item_by_id(items, id);
 
@@ -215,6 +219,7 @@ void incrementarRecurso(t_list* items, char id, int cant) {
 		item->quantity = item->quantity + cant;
 	} else {
 		printf("WARN: Item %c no existente\n", id);
+		log_warning(logFile, "WARN: Item %c no existente. (incrementar recurso)", id);
 	}
 
 }
@@ -249,12 +254,12 @@ t_list* getObjetosAdquiridosSerializable(t_list* listaP, char idP) {
 	ITEM_NIVEL* personaje = _search_item_by_id(listaP, idP);
 
 	if ((personaje != NULL )&& (personaje->id == idP)){
-		tempAdquiridos = personaje->objetosAdquiridos;
-		while (tempAdquiridos != NULL ) {
-			list_add(adquiridos, crearNodoRecurso(tempAdquiridos->id, tempAdquiridos->quantity));
-			tempAdquiridos = tempAdquiridos->next;
-		}
+	tempAdquiridos = personaje->objetosAdquiridos;
+	while (tempAdquiridos != NULL ) {
+		list_add(adquiridos, crearNodoRecurso(tempAdquiridos->id, tempAdquiridos->quantity));
+		tempAdquiridos = tempAdquiridos->next;
 	}
+}
 
 	return adquiridos;
 
@@ -282,7 +287,7 @@ t_list* getObjetosAdquiridosSerializable(t_list* listaP, char idP) {
 
 void destroyItems(t_list* ListaItems) {
 
-	list_destroy_and_destroy_elements(ListaItems, (void*)free);
+	list_destroy_and_destroy_elements(ListaItems, (void*) free);
 
 }
 

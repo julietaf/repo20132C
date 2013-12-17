@@ -99,7 +99,7 @@ int sockets_send(int sockfd, header_t *header, char *data) {
 	memcpy(packet + offset, data, tmp_len = header->length);
 	offset += tmp_len;
 
-	bytesEnviados = send(sockfd, packet, offset, 0);
+	bytesEnviados = send(sockfd, packet, offset, MSG_NOSIGNAL);
 	free(packet);
 
 	return bytesEnviados;
