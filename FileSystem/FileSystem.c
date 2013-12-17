@@ -116,7 +116,7 @@ int rutaToNumberBlock(const char* ruta) {
 
 int padreRutaToNumberBlock(const char* path){
 	char* temp;
-	temp = string_duplicate(path);
+	temp = string_duplicate((char*)path);
 	int i, j, ret;
 
 	for (i = 0; i < strlen(path); i++){
@@ -124,7 +124,7 @@ int padreRutaToNumberBlock(const char* path){
 			j = i;
 		}
 	}
-	temp = string_substring_until(path, j);
+	temp = string_substring_until((char*)path, j);
 	ret = rutaToNumberBlock(temp);
 	free(temp);
 	return ret;
@@ -141,7 +141,7 @@ int buscarNodoDisponible(){
 
 char** rutaToArray(const char* text) {
 	int length_value = strlen(text) - 1;
-	char* temp = string_duplicate(text);
+	char* temp = string_duplicate((char*)text);
 	char* value_without_brackets = string_substring(temp, 1, length_value);
 	char **array_values = string_split(value_without_brackets, "/");
 
@@ -355,15 +355,14 @@ static int grasa_mkdir(const char *path, mode_t mode) {
 	int nroNodo = buscarNodoDisponible();
 
 	if (nroNodo != -1 ){
-		strcpy(grasaFS->nodos[nroNodo].filename, strrchr('/')+ 1);
+		strcpy((char*) grasaFS->nodos[nroNodo].filename, strrchr(path, '/')+ 1);
 		grasaFS->nodos[nroNodo].state = DIRECTORIO;
-		int blkPadre = padreRutaToNumberBlock(path);
-		grasaFS->nodos[nroNodo].parent_dir_block =
+//		int blkPadre = padreRutaToNumberBlock(path);
+		grasaFS->nodos[nroNodo].parent_dir_block = padreRutaToNumberBlock(path);
+		return 0;
 	}else{
 		return -ENOENT;
 	}
-
-
 
 }
 
@@ -413,7 +412,7 @@ static struct fuse_operations grasa_oper = { 	.getattr = grasa_getattr,
 												.readdir  = grasa_readdir,
 												.read = grasa_read,
 												.open = grasa_open,
-//												.mkdir = grasa_mkdir,
+												.mkdir = grasa_mkdir,
 //												.create = grasa_create,
 //												.rmdir = grasa_rmdir,
 //												.unlink = grasa_unlink,
