@@ -1,0 +1,2 @@
+binPath=./disk.bin
+puntoMontaje=./disk.bin

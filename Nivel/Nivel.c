@@ -468,7 +468,7 @@ void tratarFinalizacionPersonaje(char* data) {
 //  TODO: REvisar con plataforma
 	char pId;
 	t_list* adquiridos = NULL;
-	t_list* asignados = NULL;
+//	t_list* asignados = NULL;
 
 	pId = data[0];
 	log_info(logFile, "Matando personaje..");
@@ -476,12 +476,13 @@ void tratarFinalizacionPersonaje(char* data) {
 	log_error(logFile, "Saco %c de listaPersonajes.", pId);
 	matarPersonaje(listaPersonajes, listaRecursos, pId, logFile);
 	mandarRecursosLiberados(adquiridos);
-	asignados = esperarRecursosAsignadosMain();
-	actualizarEstado(asignados);
-	listaRecursos_destroy(adquiridos);
-	listaRecursos_destroy(asignados);
-	log_info(logFile, "El personaje: %c, finalizo el nivel", pId);
-	dibujar();
+//	asignados = esperarRecursosAsignadosMain();
+//	actualizarEstado(asignados);
+//	listaRecursos_destroy(adquiridos);
+//	listaRecursos_destroy(asignados);
+//	log_info(logFile, "El personaje: %c, finalizo el nivel", pId);
+//	dibujar();
+	list_destroy_and_destroy_elements(adquiridos, (void *)free);
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------
@@ -646,36 +647,36 @@ t_list* esperarRecursosAsignados(header_t header) {
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-t_list* esperarRecursosAsignadosMain() {
-	log_info(logFile, "Recibiendo recursos asignados");
-	header_t header;
-	t_list* asignados = NULL;
-	char* data;
-
-	if (recv(plataformaSockfd, &header, sizeof(header), MSG_WAITALL) == 0) {
-		log_error(logFile, "Conexion perdida con el orqestador");
-	}
-
-	if (header.type == NOTIFICACION_RECURSOS_ASIGNADOS) {
-		data = malloc(header.length);
-
-		if (header.length > 0) {
-			recv(plataformaSockfd, data, header.length, MSG_WAITALL);
-			asignados = listaRecursos_deserializer(data, header.length);
-		} else if (header.length == 0) {
-			log_debug(logFile, "El orquestador no uso ningun recurso");
-			return asignados = list_create();
-		}
-
-		free(data);
-	} else {
-		log_error(logFile,
-				"Mensaje inesperado del Orquestador al esperar asignados");
-		log_error(logFile, "Type=%d length=%d.", header.type, header.length);
-	}
-
-	return asignados;
-}
+//t_list* esperarRecursosAsignadosMain() {
+//	log_info(logFile, "Recibiendo recursos asignados");
+//	header_t header;
+//	t_list* asignados = NULL;
+//	char* data;
+//
+//	if (recv(plataformaSockfd, &header, sizeof(header), MSG_WAITALL) == 0) {
+//		log_error(logFile, "Conexion perdida con el orqestador");
+//	}
+//
+//	if (header.type == NOTIFICACION_RECURSOS_ASIGNADOS) {
+//		data = malloc(header.length);
+//
+//		if (header.length > 0) {
+//			recv(plataformaSockfd, data, header.length, MSG_WAITALL);
+//			asignados = listaRecursos_deserializer(data, header.length);
+//		} else if (header.length == 0) {
+//			log_debug(logFile, "El orquestador no uso ningun recurso");
+//			return asignados = list_create();
+//		}
+//
+//		free(data);
+//	} else {
+//		log_error(logFile,
+//				"Mensaje inesperado del Orquestador al esperar asignados");
+//		log_error(logFile, "Type=%d length=%d.", header.type, header.length);
+//	}
+//
+//	return asignados;
+//}
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
