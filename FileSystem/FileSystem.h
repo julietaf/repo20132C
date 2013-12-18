@@ -18,7 +18,7 @@
 #include <fuse.h>
 #include <errno.h>
 #include <stddef.h>
-
+#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -27,6 +27,7 @@
 #include <commons/log.h>
 #include <commons/string.h>
 #include <commons/config.h>
+#include <commons/temporal.h>
 
 #define GFILEBYTABLE 1024 //Cantidad max archivos
 #define GFILEBYBLOCK 1
@@ -40,10 +41,8 @@
 #define _FILE_OFFSET_BITS 64
 #define D_FILE_OFFSET_BITS 64
 
-enum enum_estado{
-	BORRADO,
-	ARCHIVO,
-	DIRECTORIO
+enum enum_estado {
+	BORRADO, ARCHIVO, DIRECTORIO
 };
 
 //Puntero a bloque
@@ -81,7 +80,7 @@ typedef struct grasa_nodo_t { // un cuarto de bloque (256 bytes)
 typedef struct __grasa_fs {
 	GHeader* pHeader;
 	t_bitarray* pBitmap;
-	GFile* nodos;//1024
+	GFile* nodos; //1024
 	t_disco* disco;
 } t_grasa_fs;
 
@@ -94,14 +93,14 @@ t_log *logFile;
 t_config* configFile;
 configuracion_koopa_t *config;
 t_grasa_fs* grasaFS;
-
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //-------------------------------Propietarias-----------------------------------
 void getConfiguracion();
 //-------------------------------FileSystem-------------------------------------
 void fileSystemCrear();
 t_disco* discoCrear();
-int rutaToNumberBlock (const char* ruta);
+int rutaToNumberBlock(const char* ruta);
 char** rutaToArray(const char* ruta);
 int padreRutaToNumberBlock(const char* path);
 int buscarNodoDisponible();

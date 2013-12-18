@@ -8,7 +8,6 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include Fuse/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -23,26 +22,26 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: File\ System
+all: FileSystem
 
 dependents:
-	-cd /home/utnso/workspace/commons/Debug && $(MAKE) all
+	-cd /home/utnso/workspace/tp-2013-2c-lp2014/commons/Debug && $(MAKE) clean all
 
 # Tool invocations
-File\ System: $(OBJS) $(USER_OBJS) /home/utnso/workspace/commons/Debug/libcommons.so
+FileSystem: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2013-2c-lp2014/commons/Debug/libcommons.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -L"/home/utnso/workspace/commons/Debug" -o "File System" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/workspace/tp-2013-2c-lp2014/commons/Debug" -o "FileSystem" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) "File System"
+	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) FileSystem
 	-@echo ' '
 
 .PHONY: all clean dependents
 .SECONDARY:
-/home/utnso/workspace/commons/Debug/libcommons.so:
+/home/utnso/workspace/tp-2013-2c-lp2014/commons/Debug/libcommons.so:
 
 -include ../makefile.targets
