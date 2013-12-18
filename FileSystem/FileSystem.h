@@ -104,5 +104,6 @@ int rutaToNumberBlock(const char* ruta);
 char** rutaToArray(const char* ruta);
 int padreRutaToNumberBlock(const char* path);
 int buscarNodoDisponible();
+int directorioVacio(int blkDirectorio);
 
 #endif /* FILESYSTEM_H_ */

@@ -167,6 +167,29 @@ char** rutaToArray(const char* text) {
 	return array_values;
 }
 
+//----------------------------------------------------------------------------------------------------------
+
+int directorioVacio(int blkDirectorio){
+
+	int ret = 1;
+	int i;
+
+	for (i = 0; i < 1024; i++){
+		if (grasaFS->nodos[i].parent_dir_block == blkDirectorio){
+			ret = 0;
+			break;
+		}
+	}
+
+	return ret;
+}
+
+//----------------------------------------------------------------------------------------------------------
+
+void disponerNodo(int blkDirectorio){
+	//TODO:
+}
+
 //-------------------------------------------------------------------------------------------------
 // FUSE
 //-------------------------------------------------------------------------------------------------
@@ -425,9 +448,24 @@ static int grasa_create(const char *path, mode_t mode,
 
 //-------------------------------------------------------------------------------------------------
 
-static int grasa_rmdir() {
-	//TODO: Not implemented exception
-	return 1;
+static int grasa_rmdir(const char *path) {
+
+	int blkDirectorio = rutaToNumberBlock(path);
+
+	if (blkDirectorio == -1){
+		return -ENOENT;
+	}
+
+	if (directorioVacio(blkDirectorio)){
+		bzero(grasaFS->nodos[blkDirectorio].filename, 71);
+		grasaFS->nodos[blkDirectorio].state = BORRADO;
+		grasaFS->nodos[blkDirectorio].parent_dir_block = 0;
+	}
+
+	disponerNodo(blkDirectorio);
+
+	return 0;
+
 }
 
 //-------------------------------------------------------------------------------------------------
