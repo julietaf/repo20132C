@@ -333,13 +333,15 @@ static int grasa_open(const char *path, struct fuse_file_info *fi) {
 }
 //-------------------------------------------------------------------------------------------------
 
-static int grasa_read(const char *path, char *buf, size_t size, off_t offset,
-		struct fuse_file_info *fi) {
+static int grasa_read(const char *path, char *buf, size_t size, off_t offset,struct fuse_file_info *fi) {
 //	TODO: Refactorizar esta mierda
 	size_t len;
 	(void) fi;
 
+	pthread_mutex_lock(&mutex);
 	int blkDir = rutaToNumberBlock(path);
+	pthread_mutex_unlock(&mutex);
+
 	int nroBlk, blkIndirecto, blkDirecto, offsetBlk;
 
 	if (blkDir == -1)
@@ -355,66 +357,57 @@ static int grasa_read(const char *path, char *buf, size_t size, off_t offset,
 		blkIndirecto = nroBlk / 1024;
 		blkDirecto = nroBlk % 1024;
 
-//    		pthread_mutex_lock(&mutex);
-		ptrGBloque *blk_direct =
-				(ptrGBloque*) (grasaFS->disco->mem
-						+ grasaFS->nodos[blkDir].blk_indirect[blkIndirecto]
-								* BLOCK_SIZE); //blk_direct = Array[1024]
-//    		pthread_mutex_unlock(&mutex);
+    	pthread_mutex_lock(&mutex);
+		ptrGBloque *blk_direct = seek(blkDir, blkIndirecto);
+ 		pthread_mutex_unlock(&mutex);
 
 		bzero(buf, size); //Limpio el buffer
 		int bytes_leidos = 0;
 
-		if ((BLOCK_SIZE - offsetBlk) >= size)  // Si entra en el prime bloque
-				{
-//    			pthread_mutex_lock(&mutex);
-			memcpy(buf,
-					(char *) (grasaFS->disco->mem
-							+ blk_direct[blkDirecto] * BLOCK_SIZE + offsetBlk),
-					size);
-//    			pthread_mutex_unlock(&mutex);
+		if ((BLOCK_SIZE - offsetBlk) >= size){  // Si entra en el prime bloque
+
+			pthread_mutex_lock(&mutex);
+			memcpy(buf, (char *) (grasaFS->disco->mem+ blk_direct[blkDirecto] * BLOCK_SIZE + offsetBlk),size);
+			pthread_mutex_unlock(&mutex);
 			bytes_leidos = size;
 		} else {
-//    			pthread_mutex_lock(&mutex);
-			memcpy(buf,
-					(char *) (grasaFS->disco->mem
-							+ blk_direct[blkDirecto] * BLOCK_SIZE + offsetBlk),
-					BLOCK_SIZE - offsetBlk); // Copia lo que puesdas
-//    			pthread_mutex_unlock(&mutex);
+    		pthread_mutex_lock(&mutex);
+			memcpy(buf,(char *) (grasaFS->disco->mem+ blk_direct[blkDirecto] * BLOCK_SIZE + offsetBlk),BLOCK_SIZE - offsetBlk); // Copia lo que puesdas
+    		pthread_mutex_unlock(&mutex);
 			bytes_leidos += (BLOCK_SIZE - offsetBlk);
 			size -= (BLOCK_SIZE - offsetBlk);
 			blkDirecto++;
 
-			if (blkDirecto == 1024) // voy al proximo puntero indirecto y me coloco al principio
-					{
+			if (blkDirecto == 1024){ // voy al proximo puntero indirecto y me coloco al principio
+
 				blkDirecto = 0;
 				blkIndirecto++;
-//    				pthread_mutex_lock(&mutex);
-				blk_direct = (ptrGBloque*) (grasaFS->disco->mem+ grasaFS->nodos[blkDir].blk_indirect[blkDirecto]* BLOCK_SIZE);
-//    				pthread_mutex_unlock(&mutex);
+
+    			pthread_mutex_lock(&mutex);
+				blk_direct = seek(blkDir, blkDirecto);
+    			pthread_mutex_unlock(&mutex);
+
 			}
 
 			int cant_bloques_por_leer = size / BLOCK_SIZE;
 			int bytes_por_leer = size % BLOCK_SIZE;
 
 			if (cant_bloques_por_leer == 0) {
-//    				pthread_mutex_lock(&mutex);
-				memcpy(buf + bytes_leidos,
-						(char *) (grasaFS->disco->mem
-								+ blk_direct[blkDirecto] * BLOCK_SIZE),
-						bytes_por_leer);
-//    				pthread_mutex_unlock(&mutex);
+
+				pthread_mutex_lock(&mutex);
+				memcpy(buf + bytes_leidos,(char *) (grasaFS->disco->mem+ blk_direct[blkDirecto] * BLOCK_SIZE),bytes_por_leer);
+   				pthread_mutex_unlock(&mutex);
+
 				bytes_leidos += bytes_por_leer;
 				size -= bytes_por_leer;
 			} else {
 				int k;
 				for (k = 1; k <= cant_bloques_por_leer; k++) {
-//    					pthread_mutex_lock(&mutex);
-					memcpy(buf + bytes_leidos,
-							(char *) (grasaFS->disco->mem
-									+ (blk_direct[blkDirecto] * BLOCK_SIZE)),
-							BLOCK_SIZE);
-//    					pthread_mutex_unlock(&mutex);
+
+   					pthread_mutex_lock(&mutex);
+					memcpy(buf + bytes_leidos,(char *) (grasaFS->disco->mem+ (blk_direct[blkDirecto] * BLOCK_SIZE)),BLOCK_SIZE);
+    				pthread_mutex_unlock(&mutex);
+
 					bytes_leidos += BLOCK_SIZE;
 					size -= BLOCK_SIZE;
 					++blkDirecto;
@@ -422,22 +415,19 @@ static int grasa_read(const char *path, char *buf, size_t size, off_t offset,
 					if (blkDirecto == 1024) {
 						blkDirecto = 0;
 						blkIndirecto++;
-//    						pthread_mutex_lock(&mutex);
-						blk_direct =
-								(ptrGBloque*) (grasaFS->disco->mem
-										+ grasaFS->nodos[blkDir].blk_indirect[blkIndirecto]
-												* BLOCK_SIZE);
-//    						pthread_mutex_unlock(&mutex);
+
+    					pthread_mutex_lock(&mutex);
+						blk_direct = seek(blkDir, blkIndirecto);
+   						pthread_mutex_unlock(&mutex);
 					}
 				}
 
 				if (bytes_por_leer > 0) {
-//    					pthread_mutex_lock(&mutex);
-					memcpy(buf + bytes_leidos,
-							(char *) (grasaFS->disco->mem
-									+ (blk_direct[blkDirecto] * BLOCK_SIZE)),
-							bytes_por_leer);
-//    					pthread_mutex_unlock(&mutex);
+
+  					pthread_mutex_lock(&mutex);
+					memcpy(buf + bytes_leidos,(char *) (grasaFS->disco->mem+ (blk_direct[blkDirecto] * BLOCK_SIZE)),bytes_por_leer);
+    				pthread_mutex_unlock(&mutex);
+
 					bytes_leidos += bytes_por_leer;
 					size -= bytes_por_leer;
 				}
@@ -776,13 +766,112 @@ static int grasa_unlink(const char* path) {
 
 static int grasa_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info *fi) {
 
+
 	pthread_mutex_lock(&mutex);
 	int nroNodoFile = rutaToNumberBlock(path);
 	pthread_mutex_unlock(&mutex);
 
-	//TODO:
+	int nroBlk, blkIndirecto, blkDirecto, offsetBlk;
+	int long bytes_escritos = 0;
 
-	return 0;
+	grasa_truncate(path, size + offset); // OJO mutex adentro
+
+	nroBlk = offset / BLOCK_SIZE;
+	offsetBlk = offset % BLOCK_SIZE;
+	blkIndirecto = nroBlk / 1024;
+	blkDirecto = nroBlk % 1024;
+
+	pthread_mutex_lock(&mutex);
+	ptrGBloque* blk_direct = seek(nroNodoFile, blkIndirecto);
+	pthread_mutex_unlock(&mutex);
+
+	if (BLOCK_SIZE - offsetBlk >= size){
+
+		pthread_mutex_lock(&mutex);
+		memcpy((char *) (grasaFS->disco->mem + blk_direct[blkDirecto] * BLOCK_SIZE + offsetBlk), buf, size);
+		pthread_mutex_unlock(&mutex);
+		bytes_escritos += size;
+		size -= bytes_escritos;
+		pthread_mutex_lock(&mutex);
+		grasaFS->nodos[nroNodoFile].file_size += bytes_escritos;
+		pthread_mutex_unlock(&mutex);
+	}else{
+		pthread_mutex_lock(&mutex);
+		memcpy((char *) (grasaFS->disco->mem + blk_direct[blkDirecto] * BLOCK_SIZE + offsetBlk), buf, BLOCK_SIZE - offsetBlk);
+		pthread_mutex_unlock(&mutex);
+		bytes_escritos += (BLOCK_SIZE - offsetBlk);
+		size -= bytes_escritos;
+		pthread_mutex_lock(&mutex);
+		grasaFS->nodos[nroNodoFile].file_size += bytes_escritos;
+		pthread_mutex_unlock(&mutex);
+		blkDirecto++;
+
+		if (blkDirecto == 1024)
+		{
+			blkDirecto = 0;
+			blkIndirecto++;
+
+			pthread_mutex_lock(&mutex);
+			blk_direct = seek(nroNodoFile, blkIndirecto);
+			pthread_mutex_unlock(&mutex);
+		}
+
+		int cant_bloques_por_escribir = size / BLOCK_SIZE;
+		int bytes_por_escribir = size % BLOCK_SIZE;
+
+		if (cant_bloques_por_escribir == 0)
+		{
+			pthread_mutex_lock(&mutex);
+			memcpy((char *) (grasaFS->disco->mem  + blk_direct[blkDirecto] * BLOCK_SIZE), buf + bytes_escritos, bytes_por_escribir);
+			pthread_mutex_unlock(&mutex);
+			bytes_escritos += bytes_por_escribir;
+			size -= bytes_por_escribir;
+			pthread_mutex_lock(&mutex);
+			grasaFS->nodos[nroNodoFile].file_size += bytes_escritos;
+			pthread_mutex_unlock(&mutex);
+		}
+		else
+		{
+			int k;
+			for (k = 0; k < cant_bloques_por_escribir; k++)
+			{
+				pthread_mutex_lock(&mutex);
+				memcpy((char *) (grasaFS->disco->mem + (blk_direct[blkDirecto] * BLOCK_SIZE)), buf + bytes_escritos, BLOCK_SIZE);
+				pthread_mutex_unlock(&mutex);
+				bytes_escritos += BLOCK_SIZE;
+				size -= BLOCK_SIZE;
+				pthread_mutex_lock(&mutex);
+				grasaFS->nodos[nroNodoFile].file_size += bytes_escritos;
+				pthread_mutex_unlock(&mutex);
+				++blkDirecto;
+
+				if (blkDirecto == 1024)
+				{
+					blkDirecto = 0;
+					blkIndirecto++;
+					pthread_mutex_lock(&mutex);
+					blk_direct = seek(nroNodoFile, blkIndirecto);
+					pthread_mutex_unlock(&mutex);
+				}
+			}
+
+			if(bytes_por_escribir > 0)
+			{
+				pthread_mutex_lock(&mutex);
+				memcpy((char *) (grasaFS->disco->mem + (blk_direct[blkDirecto] * BLOCK_SIZE)), buf + bytes_escritos, bytes_por_escribir);
+				pthread_mutex_unlock(&mutex);
+				bytes_escritos += bytes_por_escribir;
+				size -= bytes_por_escribir;
+				pthread_mutex_lock(&mutex);
+				grasaFS->nodos[nroNodoFile].file_size += bytes_escritos;
+				pthread_mutex_unlock(&mutex);
+			}
+		}
+	}
+
+	return bytes_escritos;
+
+
 }
 
 //-------------------------------------------------------------------------------------------------
