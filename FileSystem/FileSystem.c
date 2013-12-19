@@ -26,7 +26,7 @@ void getConfiguracion(void) {
 	strcpy(config->binPath, config_get_string_value(configFile, "binPath"));
 
 	config->puntoMontaje = malloc(
-			strlen(config_get_string_value(configFile, "	")) + 1);
+			strlen(config_get_string_value(configFile, "puntoMontaje")) + 1);
 	strcpy(config->puntoMontaje,
 			config_get_string_value(configFile, "puntoMontaje"));
 
@@ -169,13 +169,13 @@ char** rutaToArray(const char* text) {
 
 //----------------------------------------------------------------------------------------------------------
 
-int directorioVacio(int blkDirectorio){
+int directorioVacio(int blkDirectorio) {
 
 	int ret = 1;
 	int i;
 
-	for (i = 0; i < 1024; i++){
-		if (grasaFS->nodos[i].parent_dir_block == blkDirectorio){
+	for (i = 0; i < 1024; i++) {
+		if (grasaFS->nodos[i].parent_dir_block == blkDirectorio) {
 			ret = 0;
 			break;
 		}
@@ -201,11 +201,9 @@ int buscarNodoDisponible(){
 //----------------------------------------------------------------------------------------------------------
 
 void disponerNodo(int blkDirectorio){
-
 	bzero(grasaFS->nodos[blkDirectorio].filename, 71);
 	grasaFS->nodos[blkDirectorio].state = BORRADO;
 	grasaFS->nodos[blkDirectorio].parent_dir_block = 0;
-
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -470,14 +468,12 @@ static int grasa_rmdir(const char *path) {
 
 	int blkDirectorio = rutaToNumberBlock(path);
 
-	if (blkDirectorio == -1){
+	if (blkDirectorio == -1) {
 		return -ENOENT;
 	}
 
 	if (directorioVacio(blkDirectorio)){
-
 		disponerNodo(blkDirectorio);
-
 	}
 
 	return 0;
@@ -486,9 +482,18 @@ static int grasa_rmdir(const char *path) {
 
 //-------------------------------------------------------------------------------------------------
 
-static int grasa_unlink() {
+static int grasa_unlink(const char *path) {
 	//TODO: Not implemented exception
-	return 1;
+	int retval = 0;
+	int blkFile = rutaToNumberBlock(path);
+
+	if (blkFile == -1)
+		retval = -ENOENT;
+	else {
+
+	}
+
+	return retval;
 }
 
 //-------------------------------------------------------------------------------------------------
