@@ -104,9 +104,14 @@ int rutaToNumberBlock(const char* ruta);
 char** rutaToArray(const char* ruta);
 int padreRutaToNumberBlock(const char* path);
 int buscarBloqueDisponible();
+void reservarBloqueDirecto(int nroNodo, int nroBloque);
+void reservarBloqueDatos(ptrGBloque* blkDirect, int nroBlk);
+void disponerBloqueDirecto(int blkDirecto, ptrGBloque* blkDirect);
+void disponerBloqueIndirecto(int nroNodo, int nroBlkIndirecto);
 int directorioVacio(int blkDirectorio);
 int buscarNodoDisponible();
 void disponerNodo(int blkDirectorio);
+ptrGBloque* seek(int nroNodo, int nroBLkIndirecto);
 
 
 #endif /* FILESYSTEM_H_ */

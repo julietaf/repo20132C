@@ -84,7 +84,7 @@ t_disco* discoCrear() {
 
 //----------------------------------------------------------------------------------------------------------
 
-int rutaToNumberBlock(const char* ruta) {
+int rutaToNumberBlock(const char* ruta) {//aunque en realidad devuelve el numero de nodo
 
 	char** vector_path = rutaToArray(ruta);
 
@@ -96,7 +96,7 @@ int rutaToNumberBlock(const char* ruta) {
 
 	while (vector_path[i] != NULL ) {
 		for (j = 0; j < 1024; j++) {
-			if ((strcmp(grasaFS->nodos[j].filename, vector_path[i]) == 0)
+			if ((strcmp((char*)grasaFS->nodos[j].filename, (char*)vector_path[i]) == 0)
 					&& (grasaFS->nodos[j].parent_dir_block == parent_dir)) {
 				parent_dir = grasaFS->nodos[j].parent_dir_block;
 				pos_archivo = j;
@@ -112,6 +112,8 @@ int rutaToNumberBlock(const char* ruta) {
 	return pos_archivo;
 
 }
+
+//----------------------------------------------------------------------------------------------------------
 
 int padreRutaToNumberBlock(const char* path) {
 	char* temp;
@@ -132,7 +134,7 @@ int padreRutaToNumberBlock(const char* path) {
 //----------------------------------------------------------------------------------------------------------
 
 int buscarBloqueDisponible() {
-	//TODO:
+	//TODO: ver esto
 	int retval = 0, i = 0;
 
 	pthread_mutex_lock(&mutex);
@@ -151,6 +153,33 @@ int buscarBloqueDisponible() {
 	pthread_mutex_unlock(&mutex);
 
 	return retval;
+}
+
+void reservarBloqueDirecto(int nroNodo, int nroBloque){
+	//TODO:
+}
+
+//----------------------------------------------------------------------------------------------------------
+
+void reservarBloqueDatos(ptrGBloque* blkDirect, int nroBlk){
+	//TODO:
+}
+
+//----------------------------------------------------------------------------------------------------------
+
+void disponerBloqueDirecto(int blkDirecto, ptrGBloque* blkDirect){
+	bitarray_clean_bit(grasaFS->pBitmap, blkDirect[blkDirecto]);
+	char *bloque_dato = (char *) grasaFS->disco->mem + blkDirect[blkDirecto] * BLOCK_SIZE;
+	bzero(bloque_dato, BLOCK_SIZE);
+	blkDirect[blkDirecto] = 0;
+}
+
+//----------------------------------------------------------------------------------------------------------
+
+void disponerBloqueIndirecto(int nroNodo, int nroBlkIndirecto){
+
+	bitarray_clean_bit(grasaFS->pBitmap, grasaFS->nodos[nroNodo].blk_indirect[nroBlkIndirecto]);//Borra Array[1024]
+	grasaFS->nodos[nroNodo].blk_indirect[nroBlkIndirecto] = 0;
 }
 
 //----------------------------------------------------------------------------------------------------------
@@ -207,6 +236,14 @@ void disponerNodo(int blkDirectorio){
 	grasaFS->nodos[blkDirectorio].parent_dir_block = 0;
 
 }
+
+//----------------------------------------------------------------------------------------------------------
+
+ptrGBloque* seek(int nroNodo, int nroBLkIndirecto){
+	return (ptrGBloque*) (grasaFS->disco->mem+ grasaFS->nodos[nroNodo].blk_indirect[nroBLkIndirecto]* BLOCK_SIZE);
+}
+
+
 
 //-------------------------------------------------------------------------------------------------
 // FUSE
@@ -355,9 +392,7 @@ static int grasa_read(const char *path, char *buf, size_t size, off_t offset,
 				blkDirecto = 0;
 				blkIndirecto++;
 //    				pthread_mutex_lock(&mutex);
-				blk_direct = (ptrGBloque*) (grasaFS->disco->mem
-						+ grasaFS->nodos[blkDir].blk_indirect[blkDirecto]
-								* BLOCK_SIZE);
+				blk_direct = (ptrGBloque*) (grasaFS->disco->mem+ grasaFS->nodos[blkDir].blk_indirect[blkDirecto]* BLOCK_SIZE);
 //    				pthread_mutex_unlock(&mutex);
 			}
 
@@ -431,7 +466,6 @@ static int grasa_mkdir(const char *path, mode_t mode) {
 		strcpy((char*) grasaFS->nodos[nroNodo].filename,
 				strrchr(path, '/') + 1);
 		grasaFS->nodos[nroNodo].state = DIRECTORIO;
-//		int blkPadre = padreRutaToNumberBlock(path);
 		grasaFS->nodos[nroNodo].parent_dir_block = padreRutaToNumberBlock(path);
 		return 0;
 	} else {
@@ -444,7 +478,7 @@ static int grasa_mkdir(const char *path, mode_t mode) {
 
 static int grasa_create(const char *path, mode_t mode,
 		struct fuse_file_info *fi) {
-	//TODO: Not implemented exception
+
 	int retval = 0, i = 0, nroNodo = buscarNodoDisponible();
 	mode = S_IFREG | 0444;
 
@@ -484,25 +518,274 @@ static int grasa_rmdir(const char *path) {
 
 }
 
+
 //-------------------------------------------------------------------------------------------------
 
-static int grasa_unlink() {
-	//TODO: Not implemented exception
-	return 1;
+static int grasa_truncate(const char *path, off_t offset) {
+
+	pthread_mutex_lock(&mutex);
+	int blkDirectorio = rutaToNumberBlock(path);
+	pthread_mutex_unlock(&mutex);
+
+	int nroBlk, blkIndirecto, blkDirecto, offsetBlk;
+
+	if (offset < grasaFS->nodos[blkDirectorio].file_size){ //Achico el archivo
+		nroBlk = offset / BLOCK_SIZE;
+		offsetBlk = offset % BLOCK_SIZE;
+		blkIndirecto = nroBlk / 1024;
+		blkDirecto = nroBlk % 1024;
+
+		if (offset == 0){
+
+
+			while((grasaFS->nodos[blkDirecto].blk_indirect[blkIndirecto] != 0) && (blkIndirecto < 1000)){
+
+				pthread_mutex_lock(&mutex);
+				ptrGBloque *blkDirect = seek(blkDirectorio, blkIndirecto);
+				pthread_mutex_unlock(&mutex);
+
+				while((blkDirect[blkDirecto] != 0) && (blkDirecto < 1024))
+				{
+					pthread_mutex_lock(&mutex);
+					disponerBloqueDirecto(blkDirecto, blkDirect);
+					pthread_mutex_unlock(&mutex);
+					++blkDirecto;
+				}
+
+				pthread_mutex_lock(&mutex);
+				disponerBloqueIndirecto(blkDirectorio, blkIndirecto);
+				pthread_mutex_unlock(&mutex);
+
+				++blkIndirecto;
+			}
+
+			pthread_mutex_lock(&mutex);
+			grasaFS->nodos[blkDirectorio].file_size = 0;
+			pthread_mutex_unlock(&mutex);
+
+			return 0;
+		}
+
+		if((nroBlk == 0) && (offsetBlk > 0)) //Menos de un bloque
+		{
+			while((grasaFS->nodos[blkDirectorio].blk_indirect[blkIndirecto] != 0) && (blkIndirecto < 1000)){
+
+				pthread_mutex_lock(&mutex);
+				ptrGBloque *blkDirect = seek(blkDirectorio, blkIndirecto);
+				pthread_mutex_unlock(&mutex);
+
+				++blkDirecto;
+
+				while((blkDirect[blkDirecto] != 0) && (blkDirecto < 1024))
+				{
+					pthread_mutex_lock(&mutex);
+					disponerBloqueDirecto(blkDirecto, blkDirect);
+					pthread_mutex_unlock(&mutex);
+					++blkDirecto;
+				}
+				if(blkIndirecto > 0)
+				{
+					pthread_mutex_lock(&mutex);
+					disponerBloqueIndirecto(blkDirectorio, blkIndirecto);
+					pthread_mutex_unlock(&mutex);
+				}
+
+				++blkIndirecto;
+			}
+
+			return 0;
+		}
+
+		if(nroBlk > 0){ //N Bloques enteros y un poco mas
+
+			if(offsetBlk > 0) //Valido para pasar al siguiente
+			{
+				++blkDirecto;
+				if(blkDirecto == 1024)
+				{
+					++blkIndirecto;
+					if(blkIndirecto == 1000)
+					{
+						return -1;
+					}
+						blkDirecto = 0;
+					}
+			}
+
+			while((grasaFS->nodos[blkDirectorio].blk_indirect[blkIndirecto] != 0) && (blkIndirecto< 1000)){
+
+				pthread_mutex_lock(&mutex);
+				ptrGBloque *blkDirect = seek(blkDirecto, blkIndirecto);
+				pthread_mutex_unlock(&mutex);
+
+				while((blkDirect[blkDirecto] != 0) && (blkDirecto < 1024)){
+					pthread_mutex_lock(&mutex);
+					disponerBloqueDirecto(blkDirecto, blkDirect);
+					pthread_mutex_unlock(&mutex);
+
+					++blkDirecto;
+				}
+				if(blkDirect[0] == 0) //no borro el array[1024]
+				{
+					pthread_mutex_lock(&mutex);
+					disponerBloqueIndirecto(blkDirectorio, blkIndirecto);
+					pthread_mutex_unlock(&mutex);
+				}
+				++blkIndirecto;
+				}
+
+			return 0;
+		}
+
+	}else{	//Agrando el archivo
+
+		pthread_mutex_lock(&mutex);
+
+		nroBlk = (grasaFS->nodos[blkDirectorio].file_size / BLOCK_SIZE);
+		offsetBlk = (grasaFS->nodos[blkDirectorio].file_size % BLOCK_SIZE);
+		blkIndirecto = nroBlk / 1024;
+		blkDirecto = nroBlk % 1024;
+
+		pthread_mutex_unlock(&mutex);
+
+		if (grasaFS->nodos[blkDirectorio].file_size == 0) //el archivo es nuevo
+		{
+			int bytes_por_reservar = offset;
+			int bytes_reservados = 0;
+			pthread_mutex_lock(&mutex);
+			reservarBloqueDirecto(blkDirectorio, blkIndirecto); //Array[1024]
+			ptrGBloque *blk_direct = seek(blkDirectorio, blkIndirecto);
+			pthread_mutex_unlock(&mutex);
+
+			while(bytes_por_reservar > bytes_reservados)
+			{
+				pthread_mutex_lock(&mutex);
+				reservarBloqueDatos(blk_direct, blkDirecto);
+				pthread_mutex_unlock(&mutex);
+//				TOOD: Ver esto
+				bytes_reservados += BLOCK_SIZE;
+				bytes_por_reservar -= bytes_reservados;
+				++blkDirecto;
+				if(blkDirecto == 1024)
+				{
+					++blkIndirecto;
+					if(blkIndirecto < 1000)
+					{
+						pthread_mutex_lock(&mutex);
+						reservarBloqueDirecto(blkDirectorio, blkIndirecto);
+						blk_direct = seek(blkDirectorio, blkIndirecto);
+						pthread_mutex_unlock(&mutex);
+						blkDirecto = 0;
+					}
+					else //No entra en el nodo
+					{
+						return -1;
+					}
+				}
+			}
+
+			return 0;
+		}
+
+		else //El archivo ya tiene datos grabados
+		{
+			int bytes_por_reservar = offset - grasaFS->nodos[blkDirectorio].file_size;
+			int bytes_reservados = 0;
+
+			while(bytes_por_reservar > bytes_reservados)
+			{
+				if(grasaFS->nodos[blkDirectorio].blk_indirect[blkIndirecto] == 0)
+				{
+					pthread_mutex_lock(&mutex);
+					reservarBloqueDirecto(blkDirectorio, blkIndirecto);
+					pthread_mutex_unlock(&mutex);
+					blkIndirecto = 0;
+				}
+
+				pthread_mutex_lock(&mutex);
+				ptrGBloque *blk_direct = seek(blkDirectorio, blkIndirecto);
+				pthread_mutex_unlock(&mutex);
+
+				if(blk_direct[blkDirecto] == 0)
+				{
+					pthread_mutex_lock(&mutex);
+					reservarBloqueDatos(blk_direct, blkDirecto);
+					pthread_mutex_unlock(&mutex);
+					bytes_reservados += BLOCK_SIZE;
+					bytes_por_reservar -= bytes_reservados;
+				}
+
+				++blkDirecto;
+
+				if(blkDirecto == 1024)
+				{
+					++blkIndirecto;
+					if(blkIndirecto < 1000)
+					{
+						pthread_mutex_lock(&mutex);
+						reservarBloqueDirecto(blkDirectorio, blkIndirecto);
+						blk_direct = seek(blkDirectorio, blkIndirecto);
+						pthread_mutex_unlock(&mutex);
+						blkDirecto = 0;
+					}
+					else
+					{
+						return -1;
+					}
+				}
+				else
+				{
+					bytes_reservados += (offset - bytes_por_reservar);
+					bytes_por_reservar -= bytes_reservados;
+				}
+
+			}
+		}
+
+		return 0;
+
+	}
+
+	return 0;
 }
 
 //-------------------------------------------------------------------------------------------------
 
-static int grasa_truncate() {
-	//TODO: Not implemented exception
-	return 1;
+static int grasa_unlink(const char* path) {
+
+	pthread_mutex_lock(&mutex);
+	int nroNodoFile = rutaToNumberBlock(path);
+	pthread_mutex_unlock(&mutex);
+
+	if (nroNodoFile == -1){
+		return -ENOENT;
+	}
+
+	grasa_truncate(path, 0); // OJO semaforos adentro!!!!
+//	int r = grasa_truncate(path, 0);
+//	if (r != 0){
+//		return r;
+//	}
+
+	pthread_mutex_lock(&mutex);
+	disponerNodo(nroNodoFile);
+	pthread_mutex_unlock(&mutex);
+
+	return 0;
+
 }
 
 //-------------------------------------------------------------------------------------------------
 
-static int grasa_write() {
-	//TODO: Not implemented exception
-	return 1;
+static int grasa_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info *fi) {
+
+	pthread_mutex_lock(&mutex);
+	int nroNodoFile = rutaToNumberBlock(path);
+	pthread_mutex_unlock(&mutex);
+
+	//TODO:
+
+	return 0;
 }
 
 //-------------------------------------------------------------------------------------------------
