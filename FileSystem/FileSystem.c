@@ -131,7 +131,7 @@ int padreRutaToNumberBlock(const char* path) {
 
 //----------------------------------------------------------------------------------------------------------
 
-int buscarNodoDisponible() {
+int buscarBloqueDisponible() {
 	//TODO:
 	int retval = 0, i = 0;
 
@@ -186,8 +186,26 @@ int directorioVacio(int blkDirectorio){
 
 //----------------------------------------------------------------------------------------------------------
 
+int buscarNodoDisponible(){
+	int i;
+	for (i = 0; i < 1024; i++)
+	{
+		if (grasaFS->nodos[i].state == BORRADO)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
+//----------------------------------------------------------------------------------------------------------
+
 void disponerNodo(int blkDirectorio){
-	//TODO:
+
+	bzero(grasaFS->nodos[blkDirectorio].filename, 71);
+	grasaFS->nodos[blkDirectorio].state = BORRADO;
+	grasaFS->nodos[blkDirectorio].parent_dir_block = 0;
+
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -457,12 +475,10 @@ static int grasa_rmdir(const char *path) {
 	}
 
 	if (directorioVacio(blkDirectorio)){
-		bzero(grasaFS->nodos[blkDirectorio].filename, 71);
-		grasaFS->nodos[blkDirectorio].state = BORRADO;
-		grasaFS->nodos[blkDirectorio].parent_dir_block = 0;
-	}
 
-	disponerNodo(blkDirectorio);
+		disponerNodo(blkDirectorio);
+
+	}
 
 	return 0;
 
@@ -497,10 +513,16 @@ static int grasa_utimens() {
 }
 
 static struct fuse_operations grasa_oper = { .getattr = grasa_getattr,
-		.readdir = grasa_readdir, .read = grasa_read, .open = grasa_open,
-		.mkdir = grasa_mkdir, .create = grasa_create, .rmdir = grasa_rmdir,
-		.unlink = grasa_unlink, .truncate = grasa_truncate,
-		.write = grasa_write, .utimens = grasa_utimens, };
+											 .readdir = grasa_readdir,
+											 .read = grasa_read,
+											 .open = grasa_open,
+											 .mkdir = grasa_mkdir,
+											 .create = grasa_create,
+											 .rmdir = grasa_rmdir,
+											 .unlink = grasa_unlink,
+											 .truncate = grasa_truncate,
+											 .write = grasa_write,
+											 .utimens = grasa_utimens, };
 
 enum {
 	KEY_VERSION, KEY_HELP,
