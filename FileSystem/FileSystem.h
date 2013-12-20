@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 
 #include <commons/bitarray.h>
 #include <commons/log.h>
