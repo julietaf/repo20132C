@@ -63,7 +63,7 @@ int atenderPedidoPersonaje(datos_planificador_t *datosPlan, int sockfdPersonaje)
 				header.type, header.length);
 	}
 
-	if (nbytes == 0) {
+	if (nbytes < 1) {
 		datos_personaje_t *unPersonaje = removerPersonajePorSockfd(datosPlan,
 				sockfdPersonaje);
 		enviarPersonajeFinalizo(datosPlan, unPersonaje->simbolo);
@@ -720,7 +720,7 @@ int actualizarAlgoritmo(header_t *header, datos_planificador_t *datosPlan) {
 	informacion_planificacion_t *info = informacionPlanificacion_deserializer(
 			data);
 
-	if (strcmp(datosPlan->nombre, info->nombreNivel) == 0) { //validacion porque la primer notificacion trae fruta.
+	if (strcasecmp(datosPlan->nombre, info->nombreNivel) == 0) { //validacion porque la primer notificacion trae fruta.
 		datosPlan->algoritmo = info->algoritmo;
 		datosPlan->retardo = info->retardo;
 		datosPlan->quatum = info->quantum;

@@ -187,7 +187,7 @@ int tienePersonajesActivos(datos_planificador_t *unPlanificador) {
 
 datos_planificador_t *buscarPlanificador(char *nombre) {
 	int _is_planificador(datos_planificador_t *plan) {
-		return strcmp(plan->nombre, nombre) == 0;
+		return strcasecmp(plan->nombre, nombre) == 0;
 	}
 
 	return list_find(listaPlanificadores, (void *) _is_planificador);
@@ -195,7 +195,7 @@ datos_planificador_t *buscarPlanificador(char *nombre) {
 
 datos_planificador_t *removerPlanificador(char *nombre) {
 	int _is_planificador(datos_planificador_t *plan) {
-		return strcmp(plan->nombre, nombre) == 0;
+		return strcasecmp(plan->nombre, nombre) == 0;
 	}
 
 	return list_remove_by_condition(listaPlanificadores,
@@ -282,7 +282,7 @@ datos_planificador_t *crearNuevoHiloPlanificador(int sockfd) {
 
 void informarPersonajesEspera(datos_planificador_t *datosPlanificador) {
 	int _is_personaje(personaje_espera_t *per) {
-		return strcmp(per->nombreNivel, datosPlanificador->nombre) == 0;
+		return strcasecmp(per->nombreNivel, datosPlanificador->nombre) == 0;
 	}
 
 	personaje_espera_t *perEspera;

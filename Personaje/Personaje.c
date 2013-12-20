@@ -304,7 +304,7 @@ void inicializarLog() {
 
 hilo_personaje_t *sacarHiloLista(char *nombreNivel) {
 	int _is_hilo_personaje(hilo_personaje_t *hPersonaje) {
-		return strcmp(hPersonaje->nivel, nombreNivel) == 0;
+		return strcasecmp(hPersonaje->nivel, nombreNivel) == 0;
 	}
 
 	hilo_personaje_t *hiloPersonaje = list_remove_by_condition(hilos,
