@@ -11,6 +11,7 @@
 #include "FileSystem.h"
 
 #define CUSTOM_FUSE_OPT_KEY(t, p, v) { t, offsetof(struct t_runtime_options, p), v }
+#define FILE_MAX_SIZE 4187593113,6
 
 //-------------------------------------------------------------------------------------------------
 // Propietarias
@@ -31,6 +32,14 @@ void getConfiguracion(void) {
 			config_get_string_value(configFile, "puntoMontaje"));
 
 }
+
+void inicializarLog() {
+
+	remove(LOG_PATH);
+	logFile = log_create(LOG_PATH, "GRASA", true, LOG_LEVEL_DEBUG);
+	log_info(logFile, "------------------------------- Grasa -------------------------------");
+}
+
 
 //-------------------------------------------------------------------------------------------------
 // File System
@@ -280,6 +289,8 @@ ptrGBloque* seek(int nroNodo, int nroBLkIndirecto) {
 //-------------------------------------------------------------------------------------------------
 
 static int grasa_getattr(const char *path, struct stat *stbuf) {
+
+	log_debug(logFile, "Ejecuntando gtattr");
 	int res = 0;
 
 	memset(stbuf, 0, sizeof(struct stat));
@@ -289,7 +300,7 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_mode = S_IFDIR | 0755;
 		stbuf->st_nlink = 2;
 	} else {
-//			todo: 	mutear???
+		pthread_mutex_lock(&mutex);
 		int pos_archivo = rutaToNumberBlock(path);
 		if (pos_archivo == -1) {
 			return -ENOENT;
@@ -306,7 +317,7 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 		} else {
 			res = -ENOENT;
 		}
-//			todo: mutear????
+		pthread_mutex_unlock(&mutex);
 	}
 
 	return res;
@@ -314,8 +325,9 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 
 //-------------------------------------------------------------------------------------------------
 
-static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-		off_t offset, struct fuse_file_info *fi) {
+static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi) {
+
+	log_debug(logFile, "Ejecuntando grasa_readdir");
 	(void) offset;
 	(void) fi;
 
@@ -353,6 +365,8 @@ static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 static int grasa_open(const char *path, struct fuse_file_info *fi) {
 
+	log_debug(logFile, "Ejecuntando open");
+
 	int blkDir = rutaToNumberBlock(path);
 
 	if (blkDir == -1)
@@ -367,6 +381,7 @@ static int grasa_open(const char *path, struct fuse_file_info *fi) {
 
 static int grasa_read(const char *path, char *buf, size_t size, off_t offset,
 		struct fuse_file_info *fi) {
+	log_debug(logFile, "Ejecuntando read");
 //	TODO: Refactorizar esta mierda
 	size_t len;
 	(void) fi;
@@ -493,10 +508,13 @@ static int grasa_read(const char *path, char *buf, size_t size, off_t offset,
 
 static int grasa_mkdir(const char *path, mode_t mode) {
 
+	log_debug(logFile, "Ejecuntando mkdir");
+
 	mode = S_IFDIR | 0755;
 
-//	todo: mutuar aca si o si
+	pthread_mutex_lock(&mutex);
 	int nroNodo = buscarNodoDisponible();
+	pthread_mutex_unlock(&mutex);
 
 	if (nroNodo != -1) {
 		strcpy((char*) grasaFS->nodos[nroNodo].filename,
@@ -514,6 +532,8 @@ static int grasa_mkdir(const char *path, mode_t mode) {
 
 static int grasa_create(const char *path, mode_t mode,
 		struct fuse_file_info *fi) {
+
+	log_debug(logFile, "Ejecuntando create");
 
 	int retval = 0, i = 0, nroNodo = buscarNodoDisponible();
 	mode = S_IFREG | 0444;
@@ -538,6 +558,8 @@ static int grasa_create(const char *path, mode_t mode,
 
 static int grasa_rmdir(const char *path) {
 
+	log_debug(logFile, "Ejecuntando rmdir");
+
 	int blkDirectorio = rutaToNumberBlock(path);
 
 	if (blkDirectorio == -1) {
@@ -555,6 +577,8 @@ static int grasa_rmdir(const char *path) {
 //-------------------------------------------------------------------------------------------------
 
 static int grasa_truncate(const char *path, off_t offset) {
+
+	log_debug(logFile, "Ejecuntando truncate");
 
 	pthread_mutex_lock(&mutex);
 	int blkDirectorio = rutaToNumberBlock(path);
@@ -772,6 +796,8 @@ static int grasa_truncate(const char *path, off_t offset) {
 
 static int grasa_unlink(const char* path) {
 
+	log_debug(logFile, "Ejecuntando unlink");
+
 	pthread_mutex_lock(&mutex);
 	int nroNodoFile = rutaToNumberBlock(path);
 	pthread_mutex_unlock(&mutex);
@@ -794,6 +820,8 @@ static int grasa_unlink(const char* path) {
 
 static int grasa_write(const char* path, const char* buf, size_t size,
 		off_t offset, struct fuse_file_info *fi) {
+
+	log_debug(logFile, "Ejecuntando write");
 
 	pthread_mutex_lock(&mutex);
 	int nroNodoFile = rutaToNumberBlock(path);
@@ -912,6 +940,8 @@ static int grasa_write(const char* path, const char* buf, size_t size,
 //-------------------------------------------------------------------------------------------------
 
 static int grasa_utimens(const char *path, const struct timespec tv[2]) {
+
+	log_debug(logFile, "Ejecuntando utimens");
 	int retval = 0;
 	pthread_mutex_lock(&mutex);
 	int nroNodoFile = rutaToNumberBlock(path);
@@ -928,32 +958,53 @@ static int grasa_utimens(const char *path, const struct timespec tv[2]) {
 	return retval;
 }
 
-static struct fuse_operations grasa_oper = { .getattr = grasa_getattr,
-		.readdir = grasa_readdir, .read = grasa_read, .open = grasa_open,
-		.mkdir = grasa_mkdir, .create = grasa_create, .rmdir = grasa_rmdir,
-		.unlink = grasa_unlink, .truncate = grasa_truncate,
-		.write = grasa_write, .utimens = grasa_utimens, };
+static struct fuse_operations grasa_oper = {
+											.getattr = grasa_getattr,
+											.readdir = grasa_readdir,
+											.mkdir = grasa_mkdir,
+											.create = grasa_create,
+											.rmdir = grasa_rmdir,
+											.unlink = grasa_unlink,
+											.open = grasa_open,
+											.read = grasa_read,
+											.truncate = grasa_truncate,
+											.write = grasa_write,
+											.utimens = grasa_utimens,
+											};
 
 enum {
 	KEY_VERSION, KEY_HELP,
 };
 
 static struct fuse_opt fuse_options[] = {
-
-FUSE_OPT_KEY("-V", KEY_VERSION), FUSE_OPT_KEY("--version", KEY_VERSION),
-		FUSE_OPT_KEY("-h", KEY_HELP), FUSE_OPT_KEY("--help", KEY_HELP),
-		FUSE_OPT_END, };
+		// Estos son parametros por defecto que ya tiene FUSE
+		FUSE_OPT_KEY("-V", KEY_VERSION),
+		FUSE_OPT_KEY("--version", KEY_VERSION),
+		FUSE_OPT_KEY("-h", KEY_HELP),
+		FUSE_OPT_KEY("--help", KEY_HELP),
+		FUSE_OPT_END,
+};
 
 //-------------------------------------------------------------------------------------------------
 
 int main(int argc, char* argv[]) {
 
 	getConfiguracion();
-	logFile = log_create(LOG_PATH, "GRASA", true, LOG_LEVEL_INFO);
+	inicializarLog();
 
 	fileSystemCrear();
 
-	return fuse_main(argc, &argv[1], &grasa_oper, NULL);
+	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+
+	 if (fuse_opt_parse(&args, NULL, fuse_options, NULL) == -1){
+	                /** error parsing options */
+	                perror("Invalid arguments!");
+	                return EXIT_FAILURE;
+	}
+
+	log_debug(logFile, "Ejecuntando FUSE");
+	return fuse_main(argc - 1, &argv[1], &grasa_oper, NULL);
+
 
 }
 

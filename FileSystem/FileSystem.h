@@ -40,7 +40,9 @@
 #define BLOCK_SIZE 4096
 #define DIRECTORIO_RAIZ "/"
 #define _FILE_OFFSET_BITS 64
-#define D_FILE_OFFSET_BITS 64
+#define FUSE_USE_VERSION 27
+
+//#define D_FILE_OFFSET_BITS 64
 
 enum enum_estado {
 	BORRADO, ARCHIVO, DIRECTORIO
@@ -98,6 +100,7 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //-------------------------------Propietarias-----------------------------------
 void getConfiguracion();
+void inicializarLog();
 //-------------------------------FileSystem-------------------------------------
 void fileSystemCrear();
 t_disco* discoCrear();
