@@ -7,6 +7,7 @@
 
 #define FUSE_USE_VERSION 27
 #define _FILE_OFFSET_BITS 64
+#define FILE_MAX_SIZE 4187593113,6
 
 #include "FileSystem.h"
 
@@ -126,6 +127,9 @@ int padreRutaToNumberBlock(const char* path) {
 			j = i;
 		}
 	}
+
+	if (j == 0)
+		j = 1;
 	temp = string_substring_until((char*) path, j);
 	ret = rutaToNumberBlock(temp);
 	free(temp);
@@ -156,22 +160,23 @@ int padreRutaToNumberBlock(const char* path) {
 //	return retval;
 //()}
 
-void reservarBloqueDirecto(int nroNodo, int nroBloque){
+void reservarBloqueDirecto(int nroNodo, int nroBloque) {
 
-	int posBitmap = grasaFS->pHeader->blk_bitmap + 1024 + grasaFS->pHeader->size_bitmap;
+	int posBitmap = grasaFS->pHeader->blk_bitmap + 1024
+			+ grasaFS->pHeader->size_bitmap;
 
-	while (bitarray_test_bit(grasaFS->pBitmap, posBitmap)){
-		posBitmap ++;
+	while (bitarray_test_bit(grasaFS->pBitmap, posBitmap)) {
+		posBitmap++;
 	}
 
 	bitarray_set_bit(grasaFS->pBitmap, posBitmap);
 
 	grasaFS->nodos[nroNodo].blk_indirect[nroBloque] = posBitmap;
 
-	ptrGBloque* blkDirect = seek(nroNodo , nroBloque);
+	ptrGBloque* blkDirect = seek(nroNodo, nroBloque);
 
 	int i;
-	for (i = 0; i < 1024; i++){
+	for (i = 0; i < 1024; i++) {
 		blkDirect[i] = 0;
 	}
 
@@ -179,22 +184,21 @@ void reservarBloqueDirecto(int nroNodo, int nroBloque){
 
 //----------------------------------------------------------------------------------------------------------
 
+void reservarBloqueDatos(ptrGBloque* blkDirect, int nroBlk) {
 
-void reservarBloqueDatos(ptrGBloque* blkDirect, int nroBlk){
+	int posBitmap = grasaFS->pHeader->blk_bitmap + 1024
+			+ grasaFS->pHeader->size_bitmap;
 
-	int posBitmap = grasaFS->pHeader->blk_bitmap + 1024 + grasaFS->pHeader->size_bitmap;
-
-	while (bitarray_test_bit(grasaFS->pBitmap, posBitmap)){
-		posBitmap ++;
+	while (bitarray_test_bit(grasaFS->pBitmap, posBitmap)) {
+		posBitmap++;
 	}
 
 	bitarray_set_bit(grasaFS->pBitmap, posBitmap);
 
-
 	blkDirect[nroBlk] = posBitmap;
-	char *bloque_dato = (char *) grasaFS->disco->mem + blkDirect[nroBlk] * BLOCK_SIZE;
+	char *bloque_dato = (char *) grasaFS->disco->mem
+			+ blkDirect[nroBlk] * BLOCK_SIZE;
 	bzero(bloque_dato, BLOCK_SIZE);
-
 
 }
 
@@ -947,13 +951,13 @@ FUSE_OPT_KEY("-V", KEY_VERSION), FUSE_OPT_KEY("--version", KEY_VERSION),
 //-------------------------------------------------------------------------------------------------
 
 int main(int argc, char* argv[]) {
-
+	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 	getConfiguracion();
 	logFile = log_create(LOG_PATH, "GRASA", true, LOG_LEVEL_INFO);
 
 	fileSystemCrear();
 
-	return fuse_main(argc, &argv[1], &grasa_oper, NULL);
+	return fuse_main(args.argc, args.argv, &grasa_oper, NULL);
 
 }
 
