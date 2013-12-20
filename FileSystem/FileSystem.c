@@ -133,36 +133,65 @@ int padreRutaToNumberBlock(const char* path) {
 
 //----------------------------------------------------------------------------------------------------------
 
-int buscarBloqueDisponible() {
-	//TODO: ver esto
-	int retval = 0, i = 0;
-
-	pthread_mutex_lock(&mutex);
-	for (i = 0; i < grasaFS->pHeader->size_bitmap; i++) {
-		if (bitarray_test_bit(grasaFS->pBitmap, i) == 1)
-			i++;
-		else
-			break;
-	}
-
-	if (i < grasaFS->pHeader->size_bitmap) {
-		bitarray_set_bit(grasaFS->pBitmap, i);
-		retval = i;
-	} else
-		retval = -1;
-	pthread_mutex_unlock(&mutex);
-
-	return retval;
-}
+//int buscarBloqueDisponible() {
+//	//TODO: ver esto
+//	int retval = 0, i = 0;
+//
+//	pthread_mutex_lock(&mutex);
+//	for (i = 0; i < grasaFS->pHeader->size_bitmap; i++) {
+//		if (bitarray_test_bit(grasaFS->pBitmap, i) == 1)
+//			i++;
+//		else
+//			break;
+//	}
+//
+//	if (i < grasaFS->pHeader->size_bitmap) {
+//		bitarray_set_bit(grasaFS->pBitmap, i);
+//		retval = i;
+//	} else
+//		retval = -1;
+//	pthread_mutex_unlock(&mutex);
+//
+//	return retval;
+//()}
 
 void reservarBloqueDirecto(int nroNodo, int nroBloque){
-	//TODO:
+
+	int posBitmap = grasaFS->pHeader->blk_bitmap + 1024 + grasaFS->pHeader->size_bitmap;
+
+	while (bitarray_test_bit(grasaFS->pBitmap, posBitmap)){
+		posBitmap ++;
+	}
+
+	bitarray_set_bit(grasaFS->pBitmap, posBitmap);
+
+	grasaFS->nodos[nroNodo].blk_indirect[nroBloque] = posBitmap;
+
+	ptrGBloque* blkDirect = seek(nroNodo , nroBloque);
+
+	int i;
+	for (i = 0; i < 1024; i++){
+		blkDirect[i] = 0;
+	}
 }
 
 //----------------------------------------------------------------------------------------------------------
 
 void reservarBloqueDatos(ptrGBloque* blkDirect, int nroBlk){
-	//TODO:
+
+	int posBitmap = grasaFS->pHeader->blk_bitmap + 1024 + grasaFS->pHeader->size_bitmap;
+
+	while (bitarray_test_bit(grasaFS->pBitmap, posBitmap)){
+		posBitmap ++;
+	}
+
+	bitarray_set_bit(grasaFS->pBitmap, posBitmap);
+
+
+	blkDirect[nroBlk] = posBitmap;
+	char *bloque_dato = (char *) grasaFS->disco->mem + blkDirect[nroBlk] * BLOCK_SIZE;
+	bzero(bloque_dato, BLOCK_SIZE);
+
 }
 
 //----------------------------------------------------------------------------------------------------------
@@ -912,7 +941,7 @@ int main(int argc, char* argv[]) {
 
 	fileSystemCrear();
 
-	return fuse_main(argc-1, &argv[1], &grasa_oper, NULL);
+	return fuse_main(argc, &argv[1], &grasa_oper, NULL);
 
 }
 
