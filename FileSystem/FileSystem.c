@@ -306,9 +306,7 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 	} else {
 		pthread_mutex_lock(&mutex);
 		int pos_archivo = rutaToNumberBlock(path);
-		if (pos_archivo == -1) {
-			return -ENOENT;
-		}
+
 		if (pos_archivo != -1) {
 			if (grasaFS->nodos[pos_archivo].state == ARCHIVO) {
 				stbuf->st_mode = S_IFREG | 0666;
@@ -344,7 +342,7 @@ static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
 
-	//TODO: Mutear
+	pthread_mutex_lock(&mutex);
 
 	if (strcmp(path, DIRECTORIO_RAIZ) == 0) {
 		for (i = 0; i < 1024; i++) {
@@ -362,6 +360,8 @@ static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off
 		}
 	}
 
+	pthread_mutex_unlock(&mutex);
+
 	return 0;
 }
 
@@ -371,7 +371,9 @@ static int grasa_open(const char *path, struct fuse_file_info *fi) {
 
 	log_debug(logFile, "Ejecuntando open");
 
+	pthread_mutex_lock(&mutex);
 	int blkDir = rutaToNumberBlock(path);
+	pthread_mutex_unlock(&mutex);
 
 	if (blkDir == -1)
 		return -ENOENT;
@@ -536,7 +538,11 @@ static int grasa_create(const char *path, mode_t mode,
 
 	log_debug(logFile, "Ejecuntando create");
 
-	int retval = 0, i = 0, nroNodo = buscarNodoDisponible();
+	int retval = 0, i = 0 ,nroNodo;
+
+	pthread_mutex_lock(&mutex);
+	nroNodo= buscarNodoDisponible();
+	pthread_mutex_unlock(&mutex);
 //	mode = S_IFREG | 0444;
 
 	if (nroNodo == -1)
