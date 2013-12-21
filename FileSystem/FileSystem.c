@@ -38,9 +38,9 @@ void inicializarLog() {
 
 	remove(LOG_PATH);
 	logFile = log_create(LOG_PATH, "GRASA", true, LOG_LEVEL_DEBUG);
-	log_info(logFile, "------------------------------- Grasa -------------------------------");
+	log_info(logFile,
+			"------------------------------- Grasa -------------------------------");
 }
-
 
 //-------------------------------------------------------------------------------------------------
 // File System
@@ -60,7 +60,6 @@ void fileSystemCrear() {
 
 	int j = grasaFS->pHeader->size_bitmap + 1;
 	grasaFS->nodos = (GFile*) &grasaFS->disco->mem[j * BLOCK_SIZE];
-
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -327,7 +326,8 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 
 //-------------------------------------------------------------------------------------------------
 
-static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi) {
+static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+		off_t offset, struct fuse_file_info *fi) {
 
 	log_debug(logFile, "Ejecuntando grasa_readdir");
 	(void) offset;
@@ -513,7 +513,7 @@ static int grasa_mkdir(const char *path, mode_t mode) {
 
 	log_debug(logFile, "Ejecuntando mkdir");
 
-	mode = S_IFDIR | 0755;
+	mode = S_IFDIR | 0777;
 
 	pthread_mutex_lock(&mutex);
 	int nroNodo = buscarNodoDisponible();
@@ -538,10 +538,10 @@ static int grasa_create(const char *path, mode_t mode,
 
 	log_debug(logFile, "Ejecuntando create");
 
-	int retval = 0, i = 0 ,nroNodo;
+	int retval = 0, i = 0, nroNodo;
 
 	pthread_mutex_lock(&mutex);
-	nroNodo= buscarNodoDisponible();
+	nroNodo = buscarNodoDisponible();
 	pthread_mutex_unlock(&mutex);
 //	mode = S_IFREG | 0444;
 
@@ -965,19 +965,11 @@ static int grasa_utimens(const char *path, const struct timespec tv[2]) {
 	return retval;
 }
 
-static struct fuse_operations grasa_oper = {
-											.getattr = grasa_getattr,
-											.readdir = grasa_readdir,
-											.mkdir = grasa_mkdir,
-											.create = grasa_create,
-											.rmdir = grasa_rmdir,
-											.unlink = grasa_unlink,
-											.open = grasa_open,
-											.read = grasa_read,
-											.truncate = grasa_truncate,
-											.write = grasa_write,
-											.utimens = grasa_utimens,
-											};
+static struct fuse_operations grasa_oper = { .getattr = grasa_getattr,
+		.readdir = grasa_readdir, .mkdir = grasa_mkdir, .create = grasa_create,
+		.rmdir = grasa_rmdir, .unlink = grasa_unlink, .open = grasa_open,
+		.read = grasa_read, .truncate = grasa_truncate, .write = grasa_write,
+		.utimens = grasa_utimens, };
 
 enum {
 	KEY_VERSION, KEY_HELP,
@@ -997,13 +989,11 @@ enum {
 int main(int argc, char* argv[]) {
 	getConfiguracion();
 
-
 	inicializarLog();
 
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
 	fileSystemCrear();
-
 
 	return fuse_main(args.argc, args.argv, &grasa_oper, NULL);
 
