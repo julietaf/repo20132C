@@ -265,7 +265,7 @@ int directorioVacio(int blkDirectorio) {
 
 int buscarNodoDisponible() {
 	int i;
-	for (i = 0; i < 1024; i++) {
+	for (i = 1; i < 1024; i++) {
 		if (grasaFS->nodos[i].state == BORRADO) {
 			return i;
 		}
@@ -983,14 +983,14 @@ enum {
 	KEY_VERSION, KEY_HELP,
 };
 
-static struct fuse_opt fuse_options[] = {
-		// Estos son parametros por defecto que ya tiene FUSE
-		FUSE_OPT_KEY("-V", KEY_VERSION),
-		FUSE_OPT_KEY("--version", KEY_VERSION),
-		FUSE_OPT_KEY("-h", KEY_HELP),
-		FUSE_OPT_KEY("--help", KEY_HELP),
-		FUSE_OPT_END,
-};
+//static struct fuse_opt fuse_options[] = {
+//		// Estos son parametros por defecto que ya tiene FUSE
+//		FUSE_OPT_KEY("-V", KEY_VERSION),
+//		FUSE_OPT_KEY("--version", KEY_VERSION),
+//		FUSE_OPT_KEY("-h", KEY_HELP),
+//		FUSE_OPT_KEY("--help", KEY_HELP),
+//		FUSE_OPT_END,
+//};
 
 //-------------------------------------------------------------------------------------------------
 
