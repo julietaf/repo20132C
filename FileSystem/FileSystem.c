@@ -38,9 +38,9 @@ void inicializarLog() {
 
 	remove(LOG_PATH);
 	logFile = log_create(LOG_PATH, "GRASA", true, LOG_LEVEL_DEBUG);
-	log_info(logFile, "------------------------------- Grasa -------------------------------");
+	log_info(logFile,
+			"------------------------------- Grasa -------------------------------");
 }
-
 
 //-------------------------------------------------------------------------------------------------
 // File System
@@ -327,39 +327,42 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 
 //-------------------------------------------------------------------------------------------------
 
-static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi) {
+static int grasa_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+		off_t offset, struct fuse_file_info *fi) {
 
 	log_debug(logFile, "Ejecuntando grasa_readdir");
 	(void) offset;
 	(void) fi;
 
 	int i;
-	int blkDirPadre = rutaToNumberBlock(path);
-	if (blkDirPadre == -1) {
-		return -ENOENT;
-	}
+//	if (blkDirPadre == -1) {
+//		return -ENOENT;
+//	}
 
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
 
 	pthread_mutex_lock(&mutex);
 
-	if (strcmp(path, DIRECTORIO_RAIZ) == 0) {
-		for (i = 0; i < 1024; i++) {
-			if (grasaFS->nodos[i].parent_dir_block == 0
-					&& grasaFS->nodos[i].state != BORRADO) {
-				filler(buf, (char*) grasaFS->nodos[i].filename, NULL, 0);
+	int blkDirPadre = rutaToNumberBlock(path);
+	if (blkDirPadre != -1) {
+
+		if (strcmp(path, DIRECTORIO_RAIZ) == 0) {
+			for (i = 0; i < 1024; i++) {
+				if (grasaFS->nodos[i].parent_dir_block == 0
+						&& grasaFS->nodos[i].state != BORRADO) {
+					filler(buf, (char*) grasaFS->nodos[i].filename, NULL, 0);
+				}
 			}
-		}
-	} else {
-		for (i = 0; i < 1024; i++) {
-			if (grasaFS->nodos[i].parent_dir_block == blkDirPadre
-					&& grasaFS->nodos[i].state != BORRADO) {
-				filler(buf, (char*) grasaFS->nodos[i].filename, NULL, 0);
+		} else {
+			for (i = 0; i < 1024; i++) {
+				if (grasaFS->nodos[i].parent_dir_block == blkDirPadre
+						&& grasaFS->nodos[i].state != BORRADO) {
+					filler(buf, (char*) grasaFS->nodos[i].filename, NULL, 0);
+				}
 			}
 		}
 	}
-
 	pthread_mutex_unlock(&mutex);
 
 	return 0;
@@ -520,10 +523,12 @@ static int grasa_mkdir(const char *path, mode_t mode) {
 	pthread_mutex_unlock(&mutex);
 
 	if (nroNodo != -1) {
+		pthread_mutex_lock(&mutex);
 		strcpy((char*) grasaFS->nodos[nroNodo].filename,
 				strrchr(path, '/') + 1);
 		grasaFS->nodos[nroNodo].state = DIRECTORIO;
 		grasaFS->nodos[nroNodo].parent_dir_block = padreRutaToNumberBlock(path);
+		pthread_mutex_unlock(&mutex);
 		return 0;
 	} else {
 		return -ENOENT;
@@ -538,24 +543,28 @@ static int grasa_create(const char *path, mode_t mode,
 
 	log_debug(logFile, "Ejecuntando create");
 
-	int retval = 0, i = 0 ,nroNodo;
+	int retval = 0, i = 0, nroNodo;
 
 	pthread_mutex_lock(&mutex);
-	nroNodo= buscarNodoDisponible();
+	nroNodo = buscarNodoDisponible();
 	pthread_mutex_unlock(&mutex);
 //	mode = S_IFREG | 0444;
 
 	if (nroNodo == -1)
 		retval = -ENOENT;
 	else {
+
+		pthread_mutex_lock(&mutex);
+
 		strcpy((char*) grasaFS->nodos[nroNodo].filename,
 				strrchr(path, '/') + 1);
 		grasaFS->nodos[nroNodo].state = ARCHIVO;
 		grasaFS->nodos[nroNodo].parent_dir_block = padreRutaToNumberBlock(path);
 		grasaFS->nodos[nroNodo].file_size = 0;
-
-		for (i = 0; i < 1000; i++)
+		for (i = 0; i < 1000; i++) {
 			grasaFS->nodos[nroNodo].blk_indirect[i] = 0;
+		}
+		pthread_mutex_unlock(&mutex);
 	}
 
 	return retval;
@@ -566,18 +575,24 @@ static int grasa_create(const char *path, mode_t mode,
 static int grasa_rmdir(const char *path) {
 
 	log_debug(logFile, "Ejecuntando rmdir");
+	int res;
 
+	pthread_mutex_lock(&mutex);
 	int blkDirectorio = rutaToNumberBlock(path);
+	if (blkDirectorio != -1) {
 
-	if (blkDirectorio == -1) {
-		return -ENOENT;
+		if (directorioVacio(blkDirectorio)) {
+			disponerNodo(blkDirectorio);
+		}
+
+		res = 0;
+
+	} else {
+		res = -ENOENT;
 	}
+	pthread_mutex_unlock(&mutex);
 
-	if (directorioVacio(blkDirectorio)) {
-		disponerNodo(blkDirectorio);
-	}
-
-	return 0;
+	return res;
 
 }
 
@@ -965,19 +980,11 @@ static int grasa_utimens(const char *path, const struct timespec tv[2]) {
 	return retval;
 }
 
-static struct fuse_operations grasa_oper = {
-											.getattr = grasa_getattr,
-											.readdir = grasa_readdir,
-											.mkdir = grasa_mkdir,
-											.create = grasa_create,
-											.rmdir = grasa_rmdir,
-											.unlink = grasa_unlink,
-											.open = grasa_open,
-											.read = grasa_read,
-											.truncate = grasa_truncate,
-											.write = grasa_write,
-											.utimens = grasa_utimens,
-											};
+static struct fuse_operations grasa_oper = { .getattr = grasa_getattr,
+		.readdir = grasa_readdir, .mkdir = grasa_mkdir, .create = grasa_create,
+		.rmdir = grasa_rmdir, .unlink = grasa_unlink, .open = grasa_open,
+		.read = grasa_read, .truncate = grasa_truncate, .write = grasa_write,
+		.utimens = grasa_utimens, };
 
 enum {
 	KEY_VERSION, KEY_HELP,
@@ -997,15 +1004,14 @@ enum {
 int main(int argc, char* argv[]) {
 	getConfiguracion();
 
-
 	inicializarLog();
 
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
 	fileSystemCrear();
+	pthread_mutex_init(&mutex, NULL );
 
-
-	return fuse_main(args.argc, args.argv, &grasa_oper, NULL);
+	return fuse_main(args.argc, args.argv, &grasa_oper, NULL );
 
 }
 

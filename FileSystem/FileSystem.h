@@ -97,7 +97,7 @@ t_log *logFile;
 t_config* configFile;
 configuracion_koopa_t *config;
 t_grasa_fs* grasaFS;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex;// = PTHREAD_MUTEX_INITIALIZER;
 
 //-------------------------------Propietarias-----------------------------------
 void getConfiguracion();
