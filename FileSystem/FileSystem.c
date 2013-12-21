@@ -60,7 +60,6 @@ void fileSystemCrear() {
 
 	int j = grasaFS->pHeader->size_bitmap + 1;
 	grasaFS->nodos = (GFile*) &grasaFS->disco->mem[j * BLOCK_SIZE];
-
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -516,7 +515,7 @@ static int grasa_mkdir(const char *path, mode_t mode) {
 
 	log_debug(logFile, "Ejecuntando mkdir");
 
-	mode = S_IFDIR | 0755;
+	mode = S_IFDIR | 0777;
 
 	pthread_mutex_lock(&mutex);
 	int nroNodo = buscarNodoDisponible();
@@ -1011,7 +1010,7 @@ int main(int argc, char* argv[]) {
 	fileSystemCrear();
 	pthread_mutex_init(&mutex, NULL );
 
-	return fuse_main(args.argc, args.argv, &grasa_oper, NULL );
+	return fuse_main(args.argc, args.argv, &grasa_oper, NULL);
 
 }
 

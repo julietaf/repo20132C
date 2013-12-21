@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/wait.h>
 #include <commons/sockets.h>
 #include <commons/config.h>
 #include <commons/log.h>
@@ -26,6 +27,9 @@ typedef struct {
 	char *puerto;
 	int backlog;
 	t_log_level detalleLog;
+	char *koopaPath;
+	char *montajePath;
+	char *scriptPath;
 } configuracion_plataforma_t;
 
 typedef struct {
@@ -95,5 +99,6 @@ int respuestaValida(char respuesta);
 estado_personaje_t *buscarEstadoPersonaje(char simbolo);
 estado_personaje_t *agregarPersonajeAGlobal(char simbolo);
 estado_personaje_t *buscarNoFinalizado(void);
+void llamarAKoopa(void);
 
 #endif /* ORQUESTADOR_H_ */
