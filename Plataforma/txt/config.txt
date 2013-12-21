@@ -1,4 +1,7 @@
 IPORQUESTADOR=127.0.0.1
-PUERTOORQUESTADOR=8080
+PUERTOORQUESTADOR=5000
 BACKLOG=5
-DETALLELOG=ERROR
+DETALLELOG=INFO
+KOOPAPATH=/home/utnso/Descargas/koopa-2c2013-master/Release/koopa
+SCRIPTPATH=/home/utnso/workspace/Script.sh
+MONTAJEPATH=/home/utnso/workspace/tmp
