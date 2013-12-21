@@ -140,14 +140,34 @@ void chequearUltimoPersonaje(void) {
 
 		if (respuesta == 's' || respuesta == 'S') {
 			printf("Aqui se llamaria a koopa.\n");
-//			char *sols[] = { "koopa", configObj->solicitudesKoopa, (char *) 0 };
-//			execv(configObj->binarioKoopa, sols);
+			llamarAKoopa();
+
 		} else {
 			printf("Hasta la vista, baby.\n");
 			exit(0);
 		}
 	} else
 		log_info(logFile, "Falta finalizar %c.", estado->simbolo);
+}
+
+void llamarAKoopa(void) {
+	int status, pidHijo = fork();
+
+	if (pidHijo == 0) {
+		char * const paramList[] = { configuracion->koopaPath,
+				configuracion->montajePath, configuracion->scriptPath, NULL };
+		execv(configuracion->koopaPath, paramList);
+	} else {
+		wait(&status);
+
+		if (status == 0) {
+			printf("Koopa finalizo correctamente.(%d)\n", status);
+			exit(EXIT_SUCCESS);
+		} else {
+			printf("Koopa fallo.(%d)\n", status);
+			exit(EXIT_FAILURE);
+		}
+	}
 }
 
 estado_personaje_t *buscarNoFinalizado(void) {
@@ -367,6 +387,17 @@ configuracion_plataforma_t *getConfiguracion(void) {
 	config->backlog = config_get_int_value(configFile, "BACKLOG");
 	config->detalleLog = log_level_from_string(
 			config_get_string_value(configFile, "DETALLELOG"));
+	config->koopaPath = malloc(
+			strlen(config_get_string_value(configFile, "KOOPAPATH")) + 1);
+	strcpy(config->koopaPath, config_get_string_value(configFile, "KOOPAPATH"));
+	config->montajePath = malloc(
+			strlen(config_get_string_value(configFile, "MONTAJEPATH")) + 1);
+	strcpy(config->montajePath,
+			config_get_string_value(configFile, "MONTAJEPATH"));
+	config->scriptPath = malloc(
+			strlen(config_get_string_value(configFile, "SCRIPTPATH")) + 1);
+	strcpy(config->scriptPath,
+			config_get_string_value(configFile, "SCRIPTPATH"));
 
 	return config;
 }
