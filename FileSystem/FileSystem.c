@@ -100,7 +100,7 @@ int rutaToNumberBlock(const char* ruta) { //aunque en realidad devuelve el numer
 			if ((strcmp((char*) grasaFS->nodos[j].filename,
 					(char*) vector_path[i]) == 0)
 					&& (grasaFS->nodos[j].parent_dir_block == parent_dir)) {
-				parent_dir = grasaFS->nodos[j].parent_dir_block;
+				parent_dir = j;
 				pos_archivo = j;
 				break;
 			}
@@ -290,7 +290,7 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 
 	//Si path es igual a "/" nos estan pidiendo los atributos del punto de montaje
 	if (strcmp(path, DIRECTORIO_RAIZ) == 0) {
-		stbuf->st_mode = S_IFDIR | 0755;
+		stbuf->st_mode = S_IFDIR | 0777;
 		stbuf->st_nlink = 2;
 	} else {
 //			todo: 	mutear???
@@ -300,11 +300,11 @@ static int grasa_getattr(const char *path, struct stat *stbuf) {
 		}
 		if (pos_archivo != -1) {
 			if (grasaFS->nodos[pos_archivo].state == ARCHIVO) {
-				stbuf->st_mode = S_IFREG | 0444;
+				stbuf->st_mode = S_IFREG | 0666;
 				stbuf->st_nlink = 1;
 				stbuf->st_size = grasaFS->nodos[pos_archivo].file_size;
 			} else if (grasaFS->nodos[pos_archivo].state == DIRECTORIO) {
-				stbuf->st_mode = S_IFDIR | 0755;
+				stbuf->st_mode = S_IFDIR | 0777;
 				stbuf->st_nlink = 1;
 			}
 		} else {
@@ -361,9 +361,6 @@ static int grasa_open(const char *path, struct fuse_file_info *fi) {
 
 	if (blkDir == -1)
 		return -ENOENT;
-
-	if ((fi->flags & 3) != O_RDONLY)
-		return -EACCES;
 
 	return 0;
 }
@@ -520,7 +517,7 @@ static int grasa_create(const char *path, mode_t mode,
 		struct fuse_file_info *fi) {
 
 	int retval = 0, i = 0, nroNodo = buscarNodoDisponible();
-	mode = S_IFREG | 0444;
+//	mode = S_IFREG | 0444;
 
 	if (nroNodo == -1)
 		retval = -ENOENT;
@@ -951,8 +948,9 @@ FUSE_OPT_KEY("-V", KEY_VERSION), FUSE_OPT_KEY("--version", KEY_VERSION),
 //-------------------------------------------------------------------------------------------------
 
 int main(int argc, char* argv[]) {
-	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 	getConfiguracion();
+//	argv[1] = config->puntoMontaje;
+	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 	logFile = log_create(LOG_PATH, "GRASA", true, LOG_LEVEL_INFO);
 
 	fileSystemCrear();
